@@ -1,11 +1,15 @@
 "use client";
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import { motion } from "framer-motion";
 
 const HomePage = () => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [activeSection, setActiveSection] = useState(0);
   const totalSections = 5;
+
+  useEffect(() => {
+    document.title = `Section ${activeSection + 1}`;
+  }, [activeSection]);
 
   const scrollToSection = (index: number) => {
     if (index < 0 || index >= totalSections) return;
