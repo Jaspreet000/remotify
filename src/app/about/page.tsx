@@ -46,7 +46,7 @@ export default function AboutPage() {
           >
             At MyApp, our mission is to empower individuals and businesses with cutting-edge technology that simplifies
             workflows, boosts productivity, and fosters creativity. We are committed to creating solutions that enhance
-            every user's experience and deliver tangible results.
+            every user&apos;s experience and deliver tangible results.
           </motion.p>
         </div>
       </section>
