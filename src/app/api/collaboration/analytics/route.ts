@@ -3,7 +3,7 @@ import { dbConnect } from '@/lib/dbConnect';
 import User from '@/models/User';
 import Team from '@/models/Team';
 import { verifyToken } from '@/lib/auth';
-import { analyzeTeamProductivity } from '@/lib/aiService';
+import { analyzeTeamDynamics } from '@/lib/aiService';
 
 interface DecodedToken {
   id: string;
@@ -105,7 +105,7 @@ export async function GET(request: Request) {
     }
 
     const teamMetrics = calculateTeamMetrics(team.sessions);
-    const insights = await analyzeTeamProductivity({
+    const analysis = await analyzeTeamDynamics({
       metrics: teamMetrics,
       sessions: team.sessions,
       members: team.members
@@ -121,7 +121,7 @@ export async function GET(request: Request) {
       success: true, 
       data: {
         ...response,
-        aiInsights: insights
+        aiInsights: analysis
       }
     });
   } catch (error) {

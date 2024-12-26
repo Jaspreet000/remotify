@@ -55,14 +55,6 @@ interface Achievement {
   unlockedAt: Date;
 }
 
-interface Badge {
-  id: string;
-  name: string;
-  tier: 'bronze' | 'silver' | 'gold' | 'platinum';
-  category: 'focus' | 'productivity' | 'collaboration' | 'streak';
-  earnedAt: Date;
-}
-
 interface UserDocument extends mongoose.Document {
   email: string;
   password: string;
@@ -142,6 +134,13 @@ interface UserDocument extends mongoose.Document {
   calculateProductivityScore(): Promise<number>;
   updateGameStats(action: string, value: number): Promise<void>;
   getAchievements(): Promise<Achievement[]>;
+  badges: Array<{
+    id: string;
+    name: string;
+    tier: 'bronze' | 'silver' | 'gold' | 'platinum';
+    category: 'focus' | 'productivity' | 'collaboration' | 'streak';
+    earnedAt: Date;
+  }>;
 }
 
 interface AdminAction {
