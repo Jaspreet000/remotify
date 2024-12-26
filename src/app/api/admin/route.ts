@@ -3,13 +3,21 @@ import {dbConnect} from '@/lib/dbConnect';
 import Admin from '@/models/Admin';
 import { verifyToken } from '@/lib/auth';
 
+interface DecodedToken {
+  id: string;
+  role: string;
+  email: string;
+  iat: number;
+  exp: number;
+}
+
 // Middleware to verify admin role
 const verifyAdmin = async (token: string | undefined) => {
   if (!token) {
     throw new Error('Authorization token is missing');
   }
 
-  const decoded: any = verifyToken(token);
+  const decoded = verifyToken(token) as DecodedToken;
   if (decoded.role !== 'admin') {
     throw new Error('Unauthorized: Admin privileges required');
   }
