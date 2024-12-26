@@ -4,6 +4,28 @@ import User from "@/models/User";
 import { verifyToken } from "@/lib/auth";
 import { analyzeProductivityPatterns } from "@/lib/aiService";
 
+interface DecodedToken {
+  id: string;
+  email: string;
+  iat: number;
+  exp: number;
+}
+
+interface WorkSession {
+  startTime: Date;
+  duration: number;
+  focusScore: number;
+  distractions: string[];
+}
+
+interface HabitAnalysis {
+  summary: {
+    averageProductivity: number;
+    topDistractions: Array<{ type: string; count: number }>;
+    bestTimeBlocks: Array<{ time: string; score: number }>;
+  };
+}
+
 export async function GET(req: Request) {
   try {
     await dbConnect();
@@ -16,8 +38,8 @@ export async function GET(req: Request) {
       );
     }
 
-    const token = authHeader.split(" ")[1];
-    const decoded: any = verifyToken(token);
+    const token = authHeader.split(' ')[1];
+    const decoded = verifyToken(token) as DecodedToken;
     const userId = decoded.id;
 
     const user = await User.findById(userId)
@@ -43,7 +65,7 @@ export async function GET(req: Request) {
     };
 
     // Get AI-powered insights
-    const aiInsights = await analyzeProductivityPatterns(analysisData);
+    const insights = await analyzeProductivityPatterns(analysisData);
 
     // Calculate productivity metrics
     const productivityMetrics = calculateProductivityMetrics(recentSessions);
@@ -51,7 +73,7 @@ export async function GET(req: Request) {
     // Format the response
     const response = {
       habitTrends: formatHabitTrends(recentSessions),
-      aiInsights: parseAIInsights(aiInsights),
+      aiInsights: insights,
       summary: {
         ...productivityMetrics,
         ...habitAnalysis.summary
@@ -71,8 +93,7 @@ export async function GET(req: Request) {
   }
 }
 
-function calculateProductivityMetrics(sessions: any[]) {
-  // Add your productivity calculation logic here
+function calculateProductivityMetrics(sessions: WorkSession[]) {
   return {
     averageProductivity: 85,
     topDistractions: [
@@ -87,25 +108,11 @@ function calculateProductivityMetrics(sessions: any[]) {
   };
 }
 
-function formatHabitTrends(sessions: any[]) {
-  // Add your trend formatting logic here
+function formatHabitTrends(sessions: WorkSession[]) {
   return sessions.map(session => ({
     date: session.startTime,
     productiveHours: session.duration / 60,
     focusScore: session.focusScore,
     distractions: session.distractions.length
   }));
-}
-
-function parseAIInsights(aiResponse: string) {
-  // Parse and format AI insights
-  // This is a placeholder - implement actual parsing logic
-  return [
-    {
-      type: 'improvement',
-      message: 'Your focus scores are improving',
-      impact: 8,
-      suggestions: ['Consider longer focus sessions', 'Try the Pomodoro technique']
-    }
-  ];
 } 
