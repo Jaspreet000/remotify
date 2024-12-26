@@ -3,8 +3,9 @@ import { dbConnect } from "@/lib/dbConnect";
 import User from "@/models/User";
 import { verifyToken } from "@/lib/auth";
 import { analyzeProductivityPatterns } from "@/lib/aiService";
+import { JWTPayload } from '@/lib/auth';
 
-interface DecodedToken {
+interface DecodedToken extends JWTPayload {
   id: string;
   email: string;
   iat: number;
@@ -31,7 +32,7 @@ export async function GET(req: Request) {
     }
 
     const token = authHeader.split(' ')[1];
-    const decoded = verifyToken(token) as DecodedToken;
+    const decoded = verifyToken(token);
     const userId = decoded.id;
 
     const user = await User.findById(userId)

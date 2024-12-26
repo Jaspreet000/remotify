@@ -7,6 +7,8 @@ export interface JWTPayload {
   id: string;
   email: string;
   role: string;
+  iat?: number;
+  exp?: number;
 }
 
 export function generateToken(payload: JWTPayload, expiresIn = '24h') {
