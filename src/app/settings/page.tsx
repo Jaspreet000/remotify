@@ -131,7 +131,28 @@ export default function Settings() {
           {/* Focus Settings */}
           <div className="bg-white shadow-lg rounded-lg p-6">
             <h2 className="text-xl font-semibold mb-4">Focus Settings</h2>
-            {/* Focus settings fields */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <label>Default Duration (minutes)</label>
+                <input
+                  type="number"
+                  value={settings?.focus.defaultDuration || 25}
+                  onChange={(e) =>
+                    handleFieldChange(
+                      {
+                        id: "defaultDuration",
+                        label: "Default Duration",
+                        type: "number",
+                        section: "focus",
+                      },
+                      parseInt(e.target.value)
+                    )
+                  }
+                  className="rounded-md border-gray-300"
+                />
+              </div>
+              {/* Add more fields */}
+            </div>
           </div>
 
           {/* Notification Settings */}

@@ -30,7 +30,6 @@ export default function Profile() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -63,7 +62,6 @@ export default function Profile() {
     key: string,
     value: string | number | boolean
   ) => {
-    setSaving(true);
     try {
       const token = localStorage.getItem("token");
       if (!token) throw new Error("No token found");
@@ -95,8 +93,6 @@ export default function Profile() {
     } catch (error) {
       console.error("Preference update error:", error);
       setError("Failed to update preferences");
-    } finally {
-      setSaving(false);
     }
   };
 

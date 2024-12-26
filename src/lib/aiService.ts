@@ -278,8 +278,23 @@ function getDefaultTeamAnalysis() {
 // Helper function to parse AI-generated challenges
 function parseChallenges(aiResponse: string) {
   try {
-    // Add safety checks and parsing logic here
-    return getDefaultChallenges();
+    // Basic parsing of AI response
+    const challenges = aiResponse.split('\n\n')
+      .filter(challenge => challenge.trim())
+      .map(challenge => {
+        const lines = challenge.split('\n');
+        return {
+          title: lines[0]?.replace(/^[#\-*]\s*/, '') || 'Challenge',
+          description: lines[1] || 'Complete this challenge',
+          difficulty: 'medium',
+          rewards: {
+            experience: 100,
+            badges: ['Achievement Unlocked']
+          }
+        };
+      });
+
+    return challenges.length > 0 ? challenges : getDefaultChallenges();
   } catch (error) {
     console.error('Challenge parsing error:', error);
     return getDefaultChallenges();

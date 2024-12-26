@@ -252,6 +252,19 @@ interface ProductivityScore {
   };
 }
 
+// For updateFocusStats
+interface FocusSession {
+  duration: number;
+  focusScore: number;
+  startTime: Date;
+}
+
+// For updateSettings
+interface SystemSettingValue {
+  value: string | number | boolean;
+  path: string;
+}
+
 const UserSchema = new mongoose.Schema(
   {
     name: { type: String, required: true },
@@ -509,7 +522,7 @@ UserSchema.methods.getRecentHabitAnalysis = function(days: number): HabitAnalysi
 };
 
 // Add method to update focus stats
-UserSchema.methods.updateFocusStats = async function(session: any) {
+UserSchema.methods.updateFocusStats = async function(session: FocusSession) {
   this.focusStats.totalSessions += 1;
   this.focusStats.totalFocusTime += session.duration;
   
@@ -693,7 +706,7 @@ UserSchema.methods.updateRankings = async function() {
 // Add method to update system settings
 UserSchema.methods.updateSettings = async function(
   settingPath: string, 
-  value: any
+  value: SystemSettingValue
 ) {
   const pathParts = settingPath.split('.');
   let current = this.settings.system;
