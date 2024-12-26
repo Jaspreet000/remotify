@@ -4,6 +4,72 @@ import User from '@/models/User';
 import { verifyToken } from '@/lib/auth';
 import { getPersonalizedRecommendations } from '@/lib/aiService';
 
+interface DecodedToken {
+  id: string;
+  email: string;
+  role: string;
+  iat: number;
+  exp: number;
+}
+
+interface WorkSession {
+  startTime: Date;
+  duration: number;
+  focusScore: number;
+}
+
+interface UserPreferences {
+  dailyFocusHours: number;
+  workingHours: {
+    start: number;
+    end: number;
+  };
+  breakDuration: number;
+}
+
+interface UserData {
+  focusStats: {
+    totalSessions: number;
+    totalFocusTime: number;
+    averageFocusScore: number;
+    todayProgress: {
+      completedSessions: number;
+      totalFocusTime: number;
+      targetHours: number;
+    };
+  };
+  recentSessions: WorkSession[];
+  preferences: UserPreferences;
+  habitAnalysis: any; // TODO: Define proper type for habit analysis
+}
+
+interface DashboardResponse {
+  focusStats: {
+    totalSessions: number;
+    totalFocusTime: number;
+    averageFocusScore: number;
+    todayProgress: {
+      completedSessions: number;
+      totalFocusTime: number;
+      targetHours: number;
+    };
+  };
+  recommendations: string[];
+  recentActivity: Array<{
+    type: string;
+    duration: number;
+    timestamp: Date;
+    score: number;
+    summary: string;
+  }>;
+  streakInfo: {
+    current: number;
+    longest: number;
+    lastActive: string | null;
+  };
+  productivityScore: number;
+}
+
 export async function GET(request: Request) {
   try {
     await dbConnect();
@@ -17,7 +83,7 @@ export async function GET(request: Request) {
     }
 
     const token = authHeader.split(' ')[1];
-    const decoded: any = verifyToken(token);
+    const decoded = verifyToken(token) as DecodedToken;
 
     const user = await User.findById(decoded.id)
       .populate('workSessions')
@@ -31,13 +97,11 @@ export async function GET(request: Request) {
       );
     }
 
-    // Get recent sessions and calculate metrics
     const recentSessions = user.workSessions.slice(-30);
     const todaySessions = recentSessions.filter(
       session => new Date(session.startTime).toDateString() === new Date().toDateString()
     );
 
-    // Calculate focus stats
     const focusStats = {
       totalSessions: recentSessions.length,
       totalFocusTime: recentSessions.reduce((acc, session) => acc + session.duration, 0),
@@ -49,31 +113,26 @@ export async function GET(request: Request) {
       }
     };
 
-    // Get AI recommendations based on user data
-    const userData = {
+    const userData: UserData = {
       focusStats,
       recentSessions,
       preferences: user.preferences,
       habitAnalysis: user.habitAnalysis
     };
 
-    const aiRecommendations = await getPersonalizedRecommendations(userData);
+    const recommendations = await getPersonalizedRecommendations(userData);
 
-    // Format recommendations
-    const recommendations = parseAIRecommendations(aiRecommendations);
-
-    // Get recent activity
-    const recentActivity = formatRecentActivity(recentSessions);
+    const response: DashboardResponse = {
+      focusStats,
+      recommendations,
+      recentActivity: formatRecentActivity(recentSessions),
+      streakInfo: calculateStreakInfo(recentSessions),
+      productivityScore: calculateProductivityScore(userData)
+    };
 
     return NextResponse.json({
       success: true,
-      data: {
-        focusStats,
-        recommendations,
-        recentActivity,
-        streakInfo: calculateStreakInfo(recentSessions),
-        productivityScore: calculateProductivityScore(userData)
-      }
+      data: response
     });
   } catch (error) {
     console.error('Dashboard API Error:', error);
@@ -84,37 +143,7 @@ export async function GET(request: Request) {
   }
 }
 
-function parseAIRecommendations(aiResponse: string) {
-  try {
-    // In a real implementation, you would parse the AI response
-    // This is a placeholder that returns formatted recommendations
-    return [
-      {
-        type: 'focus',
-        priority: 'high',
-        message: 'Your focus peaks in the morning. Consider scheduling important tasks before noon.',
-        action: 'Schedule deep work sessions between 9 AM and 12 PM'
-      },
-      {
-        type: 'break',
-        priority: 'medium',
-        message: 'Taking regular breaks improves your focus scores by 20%',
-        action: 'Enable break reminders in your focus settings'
-      },
-      {
-        type: 'environment',
-        priority: 'low',
-        message: 'Your productivity increases in quiet environments',
-        action: 'Try using noise-canceling headphones during focus sessions'
-      }
-    ];
-  } catch (error) {
-    console.error('Error parsing AI recommendations:', error);
-    return [];
-  }
-}
-
-function formatRecentActivity(sessions: any[]) {
+function formatRecentActivity(sessions: WorkSession[]) {
   return sessions.slice(-5).map(session => ({
     type: 'focus_session',
     duration: session.duration,
@@ -124,17 +153,15 @@ function formatRecentActivity(sessions: any[]) {
   }));
 }
 
-function calculateStreakInfo(sessions: any[]) {
+function calculateStreakInfo(sessions: WorkSession[]) {
   let currentStreak = 0;
   let longestStreak = 0;
   let lastActiveDate = null;
 
-  // Sort sessions by date
   const sortedSessions = sessions.sort((a, b) => 
     new Date(b.startTime).getTime() - new Date(a.startTime).getTime()
   );
 
-  // Calculate streaks
   sortedSessions.forEach((session, index) => {
     const sessionDate = new Date(session.startTime).toDateString();
     
@@ -161,7 +188,7 @@ function calculateStreakInfo(sessions: any[]) {
   };
 }
 
-function calculateProductivityScore(userData: any) {
+function calculateProductivityScore(userData: UserData): number {
   const weights = {
     focusTime: 0.3,
     taskCompletion: 0.2,
@@ -186,7 +213,7 @@ function calculateProductivityScore(userData: any) {
   );
 }
 
-function calculateImprovementScore(sessions: any[]) {
+function calculateImprovementScore(sessions: WorkSession[]): number {
   if (sessions.length < 2) return 0;
 
   const recentScores = sessions.slice(-7).map(s => s.focusScore || 0);
