@@ -65,6 +65,41 @@ interface TeamData {
   }[];
 }
 
+interface UserStats {
+  focusTime: number;
+  completedSessions: number;
+  productivity: number;
+  streaks: {
+    current: number;
+    longest: number;
+  };
+  habits: {
+    commonTimes: string[];
+    preferredDuration: number;
+    distractionPatterns: string[];
+  };
+}
+
+interface UserData {
+  stats: UserStats;
+  preferences: {
+    workHours: {
+      start: string;
+      end: string;
+    };
+    focusPreferences: {
+      duration: number;
+      breaks: number;
+    };
+  };
+  history: {
+    date: Date;
+    sessions: number;
+    focusTime: number;
+    productivity: number;
+  }[];
+}
+
 async function query(payload: HuggingFacePayload) {
   const response = await fetch(HUGGING_FACE_API_URL, {
     method: "POST",
@@ -103,22 +138,28 @@ export async function generateFocusSuggestions(userPreferences: UserPreferences)
   }
 }
 
-export async function getPersonalizedRecommendations(userData: any) {
+export async function getPersonalizedRecommendations(userData: UserData) {
   try {
     const prompt = `Provide personalized productivity recommendations based on: ${JSON.stringify(userData)}`;
     const response = await query({ inputs: prompt });
-    return response[0].generated_text;
+    if (response && response[0]?.generated_text) {
+      return response[0].generated_text;
+    }
+    return getDefaultRecommendations();
   } catch (error) {
     console.error('AI Recommendation Error:', error);
     return getDefaultRecommendations();
   }
 }
 
-export async function generatePersonalizedChallenges(userStats: any) {
+export async function generatePersonalizedChallenges(userStats: UserStats) {
   try {
     const prompt = `Create productivity challenges based on: ${JSON.stringify(userStats)}`;
     const response = await query({ inputs: prompt });
-    return getDefaultChallenges(); // Fallback to default as parsing might be unreliable
+    if (response && response[0]?.generated_text) {
+      return parseChallenges(response[0].generated_text);
+    }
+    return getDefaultChallenges();
   } catch (error) {
     console.error('AI Challenge Generation Error:', error);
     return getDefaultChallenges();
@@ -232,4 +273,15 @@ function getDefaultTeamAnalysis() {
       "Create team challenges for better engagement"
     ]
   };
+}
+
+// Helper function to parse AI-generated challenges
+function parseChallenges(aiResponse: string) {
+  try {
+    // Add safety checks and parsing logic here
+    return getDefaultChallenges();
+  } catch (error) {
+    console.error('Challenge parsing error:', error);
+    return getDefaultChallenges();
+  }
 } 

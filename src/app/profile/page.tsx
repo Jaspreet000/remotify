@@ -7,45 +7,30 @@ import Image from "next/image";
 interface UserProfile {
   name: string;
   email: string;
-  role: string;
-  avatar?: string;
-  joinedAt: string;
   stats: {
-    totalFocusHours: number;
-    tasksCompleted: number;
+    focusTime: number;
+    completedSessions: number;
+    averageScore: number;
     currentStreak: number;
-    longestStreak: number;
   };
   achievements: Array<{
     id: string;
     name: string;
     description: string;
     unlockedAt: string;
-    icon: string;
   }>;
-  badges: Array<{
-    id: string;
-    name: string;
-    tier: "bronze" | "silver" | "gold" | "platinum";
-    category: string;
-    earnedAt: string;
-  }>;
-  teams: Array<{
-    name: string;
-    role: string;
-    joinedAt: string;
-  }>;
+  preferences: {
+    theme: string;
+    notifications: boolean;
+    focusDuration: number;
+  };
 }
 
 export default function Profile() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [activeSection, setActiveSection] = useState<
-    "overview" | "achievements" | "teams"
-  >("overview");
-  const [isEditing, setIsEditing] = useState(false);
-  const [editedName, setEditedName] = useState("");
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -53,19 +38,19 @@ export default function Profile() {
         const token = localStorage.getItem("token");
         if (!token) throw new Error("No token found");
 
-        const res = await fetch("/api/auth/profile", {
+        const res = await fetch("/api/profile", {
           headers: { Authorization: `Bearer ${token}` },
         });
         const data = await res.json();
 
         if (data.success) {
-          setProfile(data.user);
-          setEditedName(data.user.name);
+          setProfile(data.profile);
         } else {
           setError(data.message);
         }
-      } catch (err) {
-        setError("Failed to load profile");
+      } catch (error) {
+        console.error("Profile fetch error:", error);
+        setError("Failed to load profile data");
       } finally {
         setLoading(false);
       }
@@ -74,27 +59,44 @@ export default function Profile() {
     fetchProfile();
   }, []);
 
-  const handleUpdateProfile = async () => {
+  const handlePreferenceUpdate = async (
+    key: string,
+    value: string | number | boolean
+  ) => {
+    setSaving(true);
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch("/api/profile", {
+      if (!token) throw new Error("No token found");
+
+      const res = await fetch("/api/profile/preferences", {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ name: editedName }),
+        body: JSON.stringify({ [key]: value }),
       });
 
       const data = await res.json();
       if (data.success) {
-        setProfile((prev) => (prev ? { ...prev, name: editedName } : null));
-        setIsEditing(false);
+        setProfile((prev) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            preferences: {
+              ...prev.preferences,
+              [key]: value,
+            },
+          };
+        });
       } else {
         setError(data.message);
       }
-    } catch (err) {
-      setError("Failed to update profile");
+    } catch (error) {
+      console.error("Preference update error:", error);
+      setError("Failed to update preferences");
+    } finally {
+      setSaving(false);
     }
   };
 

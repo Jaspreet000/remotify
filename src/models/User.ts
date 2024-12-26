@@ -166,12 +166,27 @@ interface UserDocument extends mongoose.Document {
     canManageUsers: boolean;
     canManageTeams: boolean;
     canViewAnalytics: boolean;
-    accessLevel: number;
+    accessLevel: 'full' | 'limited';
   };
   systemSettings?: {
-    dataRetention: number;
-    backupFrequency: number;
-    automatedReports: boolean;
+    emailNotifications: {
+      dailyDigest: boolean;
+      weeklyReport: boolean;
+      teamUpdates: boolean;
+      achievementAlerts: boolean;
+    };
+    pushNotifications: {
+      focusReminders: boolean;
+      breakReminders: boolean;
+      teamMentions: boolean;
+      milestoneAlerts: boolean;
+    };
+    privacy: {
+      shareStats: boolean;
+      showOnLeaderboard: boolean;
+      publicProfile: boolean;
+      activityVisibility: 'public' | 'team' | 'private';
+    };
   };
   workSessions: mongoose.Types.ObjectId[];
   teams: mongoose.Types.ObjectId[];
@@ -180,6 +195,24 @@ interface UserDocument extends mongoose.Document {
   calculateProductivityScore(): Promise<number>;
   updateGameStats(action: string, value: number): Promise<void>;
   getAchievements(): Promise<Achievement[]>;
+}
+
+interface AdminAction {
+  action: string;
+  targetUser: string;
+  team?: string;
+  details: {
+    oldRole?: string;
+    newRole?: string;
+    setting?: string;
+    value?: string | number | boolean;
+    reason?: string;
+  };
+}
+
+interface TeamRole {
+  _id: mongoose.Types.ObjectId;
+  role: 'member' | 'lead' | 'admin';
 }
 
 interface HabitAnalysis {
@@ -695,7 +728,9 @@ UserSchema.methods.manageTeamRole = async function(
     throw new Error('User not found');
   }
 
-  const teamIndex = targetUser.teams.findIndex((t: { _id: { toString: () => string } }) => t._id.toString() === teamId);
+  const teamIndex = targetUser.teams.findIndex((t: TeamRole) => 
+    t._id.toString() === teamId
+  );
   if (teamIndex === -1) {
     throw new Error('Team not found');
   }
@@ -703,7 +738,6 @@ UserSchema.methods.manageTeamRole = async function(
   targetUser.teams[teamIndex].role = newRole;
   await targetUser.save();
 
-  // Log the role change
   await this.logAdminAction({
     action: 'ROLE_CHANGE',
     targetUser: userId,
@@ -713,12 +747,7 @@ UserSchema.methods.manageTeamRole = async function(
 };
 
 // Add method to log admin actions
-UserSchema.methods.logAdminAction = async function(actionData: {
-  action: string;
-  targetUser: string;
-  team?: string;
-  details: any;
-}) {
+UserSchema.methods.logAdminAction = async function(actionData: AdminAction) {
   const AdminLog = this.model('AdminLog');
   await AdminLog.create({
     admin: this._id,
