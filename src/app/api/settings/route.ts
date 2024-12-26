@@ -3,6 +3,34 @@ import { dbConnect } from '@/lib/dbConnect';
 import User from '@/models/User';
 import { verifyToken } from '@/lib/auth';
 
+interface DecodedToken {
+  id: string;
+  email: string;
+  role: string;
+  iat: number;
+  exp: number;
+}
+
+interface UserSettings {
+  focus: {
+    defaultDuration: number;
+    breakDuration: number;
+    sessionsBeforeLongBreak: number;
+    blockedSites: string[];
+    blockedApps: string[];
+  };
+  notifications: {
+    enabled: boolean;
+    breakReminders: boolean;
+    progressUpdates: boolean;
+    teamActivity: boolean;
+  };
+  theme: {
+    mode: 'light' | 'dark';
+    color: string;
+  };
+}
+
 export async function GET(request: Request) {
   try {
     await dbConnect();
@@ -10,15 +38,15 @@ export async function GET(request: Request) {
     const authHeader = request.headers.get('Authorization');
     if (!authHeader?.startsWith('Bearer ')) {
       return NextResponse.json(
-        { success: false, message: 'Authorization token missing or invalid' },
+        { success: false, message: 'Authorization token missing' },
         { status: 401 }
       );
     }
 
     const token = authHeader.split(' ')[1];
-    const decoded: any = verifyToken(token);
+    const decoded = verifyToken(token) as DecodedToken;
 
-    const user = await User.findById(decoded.id);
+    const user = await User.findById(decoded.id).select('settings');
     if (!user) {
       return NextResponse.json(
         { success: false, message: 'User not found' },
@@ -26,48 +54,12 @@ export async function GET(request: Request) {
       );
     }
 
-    // Get settings or use defaults
-    const settings = {
-      notifications: {
-        email: {
-          dailyDigest: user.settings?.notifications?.email?.dailyDigest ?? true,
-          weeklyReport: user.settings?.notifications?.email?.weeklyReport ?? true,
-          achievements: user.settings?.notifications?.email?.achievements ?? true,
-          teamUpdates: user.settings?.notifications?.email?.teamUpdates ?? true
-        },
-        push: {
-          focusReminders: user.settings?.notifications?.push?.focusReminders ?? true,
-          breakReminders: user.settings?.notifications?.push?.breakReminders ?? true,
-          teamMentions: user.settings?.notifications?.push?.teamMentions ?? true
-        }
-      },
-      focus: {
-        defaultDuration: user.settings?.focus?.defaultDuration ?? 25,
-        breakDuration: user.settings?.focus?.breakDuration ?? 5,
-        longBreakDuration: user.settings?.focus?.longBreakDuration ?? 15,
-        sessionsBeforeLongBreak: user.settings?.focus?.sessionsBeforeLongBreak ?? 4,
-        autoStartBreaks: user.settings?.focus?.autoStartBreaks ?? true,
-        autoStartNextSession: user.settings?.focus?.autoStartNextSession ?? false,
-        blockedSites: user.settings?.focus?.blockedSites ?? [],
-        blockedApps: user.settings?.focus?.blockedApps ?? []
-      },
-      theme: {
-        mode: user.settings?.theme?.mode ?? 'system',
-        color: user.settings?.theme?.color ?? 'blue',
-        reducedMotion: user.settings?.theme?.reducedMotion ?? false,
-        fontSize: user.settings?.theme?.fontSize ?? 'medium'
-      },
-      collaboration: {
-        showOnline: user.settings?.collaboration?.showOnline ?? true,
-        shareStats: user.settings?.collaboration?.shareStats ?? true,
-        autoJoinTeamSessions: user.settings?.collaboration?.autoJoinTeamSessions ?? false,
-        defaultAvailability: user.settings?.collaboration?.defaultAvailability ?? 'available'
-      }
-    };
-
-    return NextResponse.json({ success: true, settings });
+    return NextResponse.json(
+      { success: true, settings: user.settings || {} },
+      { status: 200 }
+    );
   } catch (error) {
-    console.error('Error fetching settings:', error);
+    console.error('Settings fetch error:', error);
     return NextResponse.json(
       { success: false, message: 'Server error' },
       { status: 500 }
@@ -82,16 +74,15 @@ export async function PATCH(request: Request) {
     const authHeader = request.headers.get('Authorization');
     if (!authHeader?.startsWith('Bearer ')) {
       return NextResponse.json(
-        { success: false, message: 'Authorization token missing or invalid' },
+        { success: false, message: 'Authorization token missing' },
         { status: 401 }
       );
     }
 
     const token = authHeader.split(' ')[1];
-    const decoded: any = verifyToken(token);
-    const updates = await request.json();
+    const decoded = verifyToken(token) as DecodedToken;
+    const updates = await request.json() as Partial<UserSettings>;
 
-    // Validate settings before saving
     if (!validateSettings(updates)) {
       return NextResponse.json(
         { success: false, message: 'Invalid settings format' },
@@ -101,9 +92,9 @@ export async function PATCH(request: Request) {
 
     const user = await User.findByIdAndUpdate(
       decoded.id,
-      { settings: updates },
+      { $set: { settings: updates } },
       { new: true }
-    );
+    ).select('settings');
 
     if (!user) {
       return NextResponse.json(
@@ -112,9 +103,12 @@ export async function PATCH(request: Request) {
       );
     }
 
-    return NextResponse.json({ success: true, settings: user.settings });
+    return NextResponse.json(
+      { success: true, settings: user.settings },
+      { status: 200 }
+    );
   } catch (error) {
-    console.error('Error updating settings:', error);
+    console.error('Settings update error:', error);
     return NextResponse.json(
       { success: false, message: 'Server error' },
       { status: 500 }
@@ -122,7 +116,7 @@ export async function PATCH(request: Request) {
   }
 }
 
-function validateSettings(settings: any): boolean {
+function validateSettings(settings: Partial<UserSettings>): boolean {
   // Add validation logic here
   return true;
 }

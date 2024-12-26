@@ -5,6 +5,47 @@ import User from '@/models/User';
 import { verifyToken } from '@/lib/auth';
 import { generatePersonalizedChallenges } from '@/lib/aiService';
 
+interface DecodedToken {
+  id: string;
+  email: string;
+  role: string;
+  iat: number;
+  exp: number;
+}
+
+interface UserStats {
+  level: number;
+  experience: number;
+  achievements: Array<{
+    id: string;
+    name: string;
+    date: Date;
+  }>;
+  recentActivity: Array<{
+    type: string;
+    score: number;
+    timestamp: Date;
+  }>;
+}
+
+interface ChallengeData {
+  title: string;
+  description: string;
+  type: 'daily' | 'weekly' | 'achievement' | 'team';
+  difficulty: 'easy' | 'medium' | 'hard';
+  requirements: {
+    focusTime?: number;
+    sessions?: number;
+    productivity?: number;
+    teamParticipation?: number;
+  };
+  rewards: {
+    experience: number;
+    badges: string[];
+    specialPerks: string[];
+  };
+}
+
 export async function GET(request: Request) {
   try {
     await dbConnect();
@@ -18,7 +59,7 @@ export async function GET(request: Request) {
     }
 
     const token = authHeader.split(' ')[1];
-    const decoded: any = verifyToken(token);
+    const decoded = verifyToken(token) as DecodedToken;
 
     const user = await User.findById(decoded.id)
       .populate('workSessions')
@@ -31,52 +72,35 @@ export async function GET(request: Request) {
       );
     }
 
-    // Get active challenges
-    const activeChallenges = await Challenge.find({
-      $or: [
-        { 'participants.user': user._id },
-        { teamId: { $in: user.teams.map(t => t._id) } }
-      ],
-      endDate: { $gt: new Date() }
-    }).populate('participants.user', 'name avatar');
-
-    // Generate new AI challenges if needed
-    if (activeChallenges.length < 3) {
-      const userStats = {
-        focusHistory: user.workSessions,
-        preferences: user.preferences,
-        completedChallenges: await Challenge.find({
-          'participants.user': user._id,
-          'participants.completed': true
-        })
-      };
-
-      const newChallenges = await generatePersonalizedChallenges(userStats);
-      await Challenge.insertMany(newChallenges.map(challenge => ({
-        ...challenge,
-        aiGenerated: true,
-        participants: [{ user: user._id }]
-      })));
-    }
-
-    // Get user's progress and achievements
-    const userProgress = {
+    const userStats: UserStats = {
       level: calculateUserLevel(user),
       experience: user.experience || 0,
-      badges: user.badges || [],
-      recentAchievements: await getRecentAchievements(user._id),
-      leaderboardPosition: await getLeaderboardPosition(user._id)
+      achievements: await getRecentAchievements(decoded.id),
+      recentActivity: user.workSessions.slice(-5).map(session => ({
+        type: 'focus_session',
+        score: session.focusScore,
+        timestamp: session.startTime
+      }))
     };
+
+    const personalizedChallenges = await generatePersonalizedChallenges(userStats);
+    const activeChallenges = await Challenge.find({
+      'participants.user': decoded.id,
+      'participants.completed': false
+    }).populate('teamId');
 
     return NextResponse.json({
       success: true,
       data: {
-        challenges: activeChallenges,
-        progress: userProgress
+        userStats,
+        challenges: {
+          active: activeChallenges,
+          suggested: personalizedChallenges
+        }
       }
     });
   } catch (error) {
-    console.error('Challenges API Error:', error);
+    console.error('Challenge API Error:', error);
     return NextResponse.json(
       { success: false, message: 'Internal server error' },
       { status: 500 }
@@ -87,7 +111,6 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     await dbConnect();
-    const { challengeId } = await request.json();
 
     const authHeader = request.headers.get('Authorization');
     if (!authHeader?.startsWith('Bearer ')) {
@@ -98,33 +121,21 @@ export async function POST(request: Request) {
     }
 
     const token = authHeader.split(' ')[1];
-    const decoded: any = verifyToken(token);
+    const decoded = verifyToken(token) as DecodedToken;
 
-    const challenge = await Challenge.findById(challengeId);
-    if (!challenge) {
-      return NextResponse.json(
-        { success: false, message: 'Challenge not found' },
-        { status: 404 }
-      );
-    }
-
-    // Add user to challenge participants
-    const participantExists = challenge.participants.some(
-      p => p.user.toString() === decoded.id
-    );
-
-    if (!participantExists) {
-      challenge.participants.push({
+    const challengeData: ChallengeData = await request.json();
+    const challenge = await Challenge.create({
+      ...challengeData,
+      participants: [{
         user: decoded.id,
         progress: 0,
         completed: false
-      });
-      await challenge.save();
-    }
+      }]
+    });
 
-    return NextResponse.json({ success: true, challenge });
+    return NextResponse.json({ success: true, data: challenge });
   } catch (error) {
-    console.error('Challenge Join Error:', error);
+    console.error('Challenge Creation Error:', error);
     return NextResponse.json(
       { success: false, message: 'Internal server error' },
       { status: 500 }
@@ -132,8 +143,7 @@ export async function POST(request: Request) {
   }
 }
 
-// Helper functions
-function calculateUserLevel(user: any) {
+function calculateUserLevel(user: { experience: number }): number {
   const baseXP = 1000; // XP needed for first level
   const experience = user.experience || 0;
   return Math.floor(Math.log(experience / baseXP + 1) / Math.log(1.5)) + 1;
@@ -148,9 +158,4 @@ async function getRecentAchievements(userId: string) {
     'participants.completed': true,
     'participants.completedAt': { $gte: oneWeekAgo }
   }).sort('-participants.completedAt').limit(5);
-}
-
-async function getLeaderboardPosition(userId: string) {
-  const users = await User.find().sort('-experience');
-  return users.findIndex(u => u._id.toString() === userId) + 1;
 } 

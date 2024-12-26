@@ -18,14 +18,6 @@ interface WorkSession {
   distractions: string[];
 }
 
-interface HabitAnalysis {
-  summary: {
-    averageProductivity: number;
-    topDistractions: Array<{ type: string; count: number }>;
-    bestTimeBlocks: Array<{ time: string; score: number }>;
-  };
-}
-
 export async function GET(req: Request) {
   try {
     await dbConnect();
@@ -53,24 +45,18 @@ export async function GET(req: Request) {
       );
     }
 
-    // Get recent work sessions and habit analysis
     const recentSessions = user.workSessions.slice(-30);
     const habitAnalysis = user.getRecentHabitAnalysis(7);
 
-    // Prepare data for AI analysis
     const analysisData = {
       sessions: recentSessions,
       habits: habitAnalysis,
       preferences: user.preferences
     };
 
-    // Get AI-powered insights
     const insights = await analyzeProductivityPatterns(analysisData);
-
-    // Calculate productivity metrics
     const productivityMetrics = calculateProductivityMetrics(recentSessions);
 
-    // Format the response
     const response = {
       habitTrends: formatHabitTrends(recentSessions),
       aiInsights: insights,

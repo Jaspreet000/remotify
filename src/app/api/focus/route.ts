@@ -4,6 +4,36 @@ import FocusSession from '@/models/FocusSession';
 import { verifyToken } from '@/lib/auth';
 import User from '@/models/User';
 
+interface DecodedToken {
+  id: string;
+  email: string;
+  role: string;
+  iat: number;
+  exp: number;
+}
+
+interface UserPreferences {
+  focus: {
+    defaultDuration: number;
+    breakDuration: number;
+    sessionsBeforeLongBreak: number;
+    blockedSites: string[];
+    blockedApps: string[];
+  };
+}
+
+interface FocusSessionData {
+  user: string;
+  startTime: Date;
+  duration: number;
+  isCompleted: boolean;
+  focusScore?: number;
+  blockedItems: Array<{
+    type: 'website' | 'app';
+    name: string;
+  }>;
+}
+
 // GET all focus sessions for a user
 export async function GET(request: Request) {
   try {
@@ -15,7 +45,7 @@ export async function GET(request: Request) {
     }
 
     const token = authHeader.split(' ')[1];
-    const decoded: any = verifyToken(token);
+    const decoded = verifyToken(token) as DecodedToken;
 
     const user = await User.findById(decoded.id);
     if (!user) {
@@ -28,22 +58,19 @@ export async function GET(request: Request) {
       breakDuration: user.preferences?.focus?.breakDuration || 5,
       sessionsPerDay: user.preferences?.focus?.sessionsBeforeLongBreak || 4,
       blockedItems: [
-        ...(user.preferences?.focus?.blockedSites || []).map(site => ({ type: 'website', name: site })),
-        ...(user.preferences?.focus?.blockedApps || []).map(app => ({ type: 'app', name: app }))
+        ...(user.preferences?.focus?.blockedSites || []).map(site => ({ type: 'website' as const, name: site })),
+        ...(user.preferences?.focus?.blockedApps || []).map(app => ({ type: 'app' as const, name: app }))
       ]
     };
 
-    return NextResponse.json({ 
-      success: true, 
-      preferences,
-      sessions: user.workSessions || []
-    });
+    return NextResponse.json({ success: true, preferences });
   } catch (error) {
+    console.error('Focus Session Error:', error);
     return NextResponse.json({ success: false, message: 'Server error', error });
   }
 }
 
-// POST to create a new focus session
+// POST to create new focus session
 export async function POST(request: Request) {
   try {
     await dbConnect();
@@ -54,16 +81,22 @@ export async function POST(request: Request) {
     }
 
     const token = authHeader.split(' ')[1];
-    const decoded: any = verifyToken(token);
+    const decoded = verifyToken(token) as DecodedToken;
 
-    const { duration } = await request.json();
-    const session = await FocusSession.create({
+    const { duration, blockedItems } = await request.json();
+
+    const sessionData: FocusSessionData = {
       user: decoded.id,
+      startTime: new Date(),
       duration,
-    });
+      isCompleted: false,
+      blockedItems: blockedItems || []
+    };
 
+    const session = await FocusSession.create(sessionData);
     return NextResponse.json({ success: true, session });
   } catch (error) {
+    console.error('Focus Session Creation Error:', error);
     return NextResponse.json({ success: false, message: 'Server error', error });
   }
 }
@@ -79,7 +112,7 @@ export async function PATCH(request: Request) {
     }
 
     const token = authHeader.split(' ')[1];
-    const decoded: any = verifyToken(token);
+    const decoded = verifyToken(token) as DecodedToken;
 
     const { sessionId } = await request.json();
     const session = await FocusSession.findOneAndUpdate(
@@ -94,6 +127,7 @@ export async function PATCH(request: Request) {
 
     return NextResponse.json({ success: true, session });
   } catch (error) {
+    console.error('Focus Session Update Error:', error);
     return NextResponse.json({ success: false, message: 'Server error', error });
   }
 }

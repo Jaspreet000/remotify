@@ -36,7 +36,7 @@ export async function GET(request: Request) {
     const token = authHeader.split(" ")[1];
     const decoded = verifyToken(token) as DecodedToken;
 
-    const collaborationData = await Collaboration.find({ user: decoded.id }).lean();
+    const collaborationData = await Collaboration.find({ user: decoded.id }).lean() as CollaborationData[];
 
     return NextResponse.json({ success: true, data: collaborationData });
   } catch (error) {
@@ -64,14 +64,16 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, message: "Invalid input data" }, { status: 400 });
     }
 
-    const newCollaboration = await Collaboration.create({ 
-      user: decoded.id, 
-      team, 
+    const newCollaboration: CollaborationData = {
+      user: decoded.id,
+      team,
       activity,
       timestamp: new Date()
-    });
+    };
 
-    return NextResponse.json({ success: true, data: newCollaboration });
+    const savedCollaboration = await Collaboration.create(newCollaboration);
+
+    return NextResponse.json({ success: true, data: savedCollaboration });
   } catch (error) {
     console.error("Error adding collaboration data:", error);
     return NextResponse.json({ success: false, message: "Server error" }, { status: 500 });

@@ -4,6 +4,21 @@ import { dbConnect } from '@/lib/dbConnect';
 import HabitLog from '@/models/HabitLog';
 import jwt from 'jsonwebtoken';
 
+interface DecodedToken {
+  id: string;
+  email: string;
+  role: string;
+  iat: number;
+  exp: number;
+}
+
+interface HabitLogInput {
+  taskName: string;
+  duration: number;
+  breaks: number;
+  distractions: number;
+}
+
 export async function POST(req: Request) {
   try {
     await dbConnect();
@@ -14,14 +29,21 @@ export async function POST(req: Request) {
     }
 
     const token = authHeader.split(' ')[1];
-    const decoded: any = jwt.verify(token, process.env.JWT_SECRET || 'default_secret_key');
+    const decoded = jwt.verify(
+      token, 
+      process.env.JWT_SECRET || 'default_secret_key'
+    ) as DecodedToken;
+    
     const userId = decoded.id;
 
-    const body = await req.json();
+    const body = await req.json() as HabitLogInput;
     const { taskName, duration, breaks, distractions } = body;
 
     if (!taskName || !duration) {
-      return NextResponse.json({ success: false, message: 'Task name and duration are required' }, { status: 400 });
+      return NextResponse.json(
+        { success: false, message: 'Task name and duration are required' },
+        { status: 400 }
+      );
     }
 
     const habitLog = await HabitLog.create({
@@ -35,6 +57,9 @@ export async function POST(req: Request) {
     return NextResponse.json({ success: true, habitLog });
   } catch (error) {
     console.error('Error in habit logging:', error);
-    return NextResponse.json({ success: false, message: 'Internal Server Error' }, { status: 500 });
+    return NextResponse.json(
+      { success: false, message: 'Internal Server Error' },
+      { status: 500 }
+    );
   }
 }

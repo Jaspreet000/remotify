@@ -27,6 +27,23 @@ interface UserPreferences {
   breakDuration: number;
 }
 
+interface HabitAnalysis {
+  summary: {
+    averageProductivity: number;
+    topDistractions: Array<{ type: string; count: number }>;
+    bestTimeBlocks: Array<{ time: string; score: number }>;
+  };
+  trends: {
+    daily: Array<{ date: string; score: number }>;
+    weekly: Array<{ week: string; average: number }>;
+  };
+  insights: Array<{
+    type: string;
+    message: string;
+    impact: number;
+  }>;
+}
+
 interface UserData {
   focusStats: {
     totalSessions: number;
@@ -40,7 +57,7 @@ interface UserData {
   };
   recentSessions: WorkSession[];
   preferences: UserPreferences;
-  habitAnalysis: any; // TODO: Define proper type for habit analysis
+  habitAnalysis: HabitAnalysis;
 }
 
 interface DashboardResponse {
