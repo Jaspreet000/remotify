@@ -16,7 +16,8 @@ export function generateToken(payload: JWTPayload, expiresIn = '24h') {
 export function verifyToken(token: string): JWTPayload {
   try {
     return jwt.verify(token, JWT_SECRET) as JWTPayload;
-  } catch (error) {
+  } catch (error: unknown) {
+    console.error('Token verification failed:', error);
     throw new Error('Invalid token');
   }
 }

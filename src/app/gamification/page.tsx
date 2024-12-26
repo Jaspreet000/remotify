@@ -35,11 +35,19 @@ interface Challenge {
   endDate: string;
 }
 
+interface Achievement {
+  id: string;
+  title: string;
+  description: string;
+  dateEarned: string;
+  icon: string;
+}
+
 interface UserProgress {
   level: number;
   experience: number;
   badges: string[];
-  recentAchievements: any[];
+  recentAchievements: Achievement[];
   leaderboardPosition: number;
 }
 
@@ -66,7 +74,8 @@ export default function Gamification() {
         } else {
           setError(result.message);
         }
-      } catch (err) {
+      } catch (error) {
+        console.error("Failed to load challenges:", error);
         setError("Failed to load challenges");
       } finally {
         setLoading(false);
@@ -90,17 +99,40 @@ export default function Gamification() {
 
       const result = await res.json();
       if (result.success) {
-        // Update challenges list
-        setChallenges((prev) =>
-          prev.map((c) => (c._id === challengeId ? result.challenge : c))
+        // Update challenges list with new participant
+        setChallenges((prevChallenges) =>
+          prevChallenges.map((challenge) =>
+            challenge._id === challengeId
+              ? {
+                  ...challenge,
+                  participants: [
+                    ...challenge.participants,
+                    result.data.participant,
+                  ],
+                }
+              : challenge
+          )
         );
       }
-    } catch (err) {
+    } catch (error) {
+      console.error("Failed to join challenge:", error);
       setError("Failed to join challenge");
     }
   };
 
   if (loading) return <LoadingSpinner />;
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 px-4 py-12">
+        <div className="max-w-7xl mx-auto">
+          <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-md">
+            <p className="text-red-700">{error}</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 px-4 py-12">

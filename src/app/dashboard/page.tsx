@@ -2,19 +2,7 @@
 
 import { useEffect, useState } from "react";
 import LoadingSpinner from "@/components/LoadingSpinner";
-import {
-  LineChart,
-  Line,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  RadialBarChart,
-  RadialBar,
-} from "recharts";
+import { RadialBarChart, RadialBar, ResponsiveContainer } from "recharts";
 import { motion } from "framer-motion";
 
 interface DashboardData {
@@ -70,7 +58,8 @@ export default function Dashboard() {
         } else {
           setError(result.message);
         }
-      } catch (err) {
+      } catch (error) {
+        console.error("Dashboard data error:", error);
         setError("Failed to load dashboard data");
       } finally {
         setLoading(false);
@@ -217,7 +206,7 @@ export default function Dashboard() {
           </div>
           <div className="bg-white rounded-xl shadow-lg p-6">
             <h4 className="text-sm font-medium text-gray-500">
-              Today's Progress
+              Today&apos;s Progress
             </h4>
             <p className="text-2xl font-bold text-blue-600">
               {Math.round(

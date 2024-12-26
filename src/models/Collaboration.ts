@@ -15,146 +15,81 @@ interface Activity {
   metadata: {
     title: string;
     description?: string;
-    location?: string;
-    tags: string[];
+    outcome?: string;
   };
 }
 
 interface CollaborationDocument extends mongoose.Document {
-  team: string;
+  teamId: mongoose.Types.ObjectId;
   activity: Activity[];
   metrics: {
-    weeklyMeetingHours: number;
-    avgParticipation: number;
+    totalTime: number;
+    averageParticipation: number;
     productivityScore: number;
   };
-  integrations: {
-    slack: {
-      enabled: boolean;
-      workspaceId: string;
-      channels: string[];
-    };
-    googleCalendar: {
-      enabled: boolean;
-      calendarIds: string[];
-    };
-  };
-  calculateMetrics: () => Promise<{
-    weeklyMeetingHours: number;
-    avgParticipation: number;
-    productivityScore: number;
-  }>;
-  generateHeatmap: (days?: number) => number[];
+  getActivityHeatmap(days: number): number[];
 }
 
+const ParticipantSchema = new mongoose.Schema({
+  userId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
+  },
+  contribution: {
+    type: Number,
+    default: 0
+  }
+});
+
 const ActivitySchema = new mongoose.Schema({
-  date: { type: Date, required: true },
+  date: {
+    type: Date,
+    required: true
+  },
   type: {
     type: String,
     enum: ['meeting', 'task', 'focus-session', 'code-review', 'pair-programming'],
     required: true
   },
-  duration: { type: Number, required: true },
-  participants: [{
-    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-    contribution: { type: Number, min: 0, max: 100 }
-  }],
+  duration: {
+    type: Number,
+    required: true
+  },
+  participants: [ParticipantSchema],
   platform: {
     type: String,
-    enum: ['slack', 'google-meet', 'zoom', 'in-person', 'other']
+    enum: ['slack', 'google-meet', 'zoom', 'in-person', 'other'],
+    required: true
   },
   metadata: {
     title: String,
     description: String,
-    location: String,
-    tags: [String]
+    outcome: String
   }
-}, { timestamps: true });
+});
 
 const CollaborationSchema = new mongoose.Schema({
-  team: {
-    type: String,
-    required: true,
-    index: true
+  teamId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Team',
+    required: true
   },
   activity: [ActivitySchema],
   metrics: {
-    weeklyMeetingHours: { type: Number, default: 0 },
-    avgParticipation: { type: Number, default: 0 },
+    totalTime: { type: Number, default: 0 },
+    averageParticipation: { type: Number, default: 0 },
     productivityScore: { type: Number, default: 0 }
-  },
-  integrations: {
-    slack: {
-      enabled: { type: Boolean, default: false },
-      workspaceId: String,
-      channels: [String]
-    },
-    googleCalendar: {
-      enabled: { type: Boolean, default: false },
-      calendarIds: [String]
-    }
   }
-}, {
-  timestamps: true,
-  toJSON: { virtuals: true },
-  toObject: { virtuals: true }
 });
 
-// Virtual for getting team members
-CollaborationSchema.virtual('members', {
-  ref: 'User',
-  localField: 'team',
-  foreignField: 'teams',
-  justOne: false
-});
-
-// Method to calculate team metrics
-CollaborationSchema.methods.calculateMetrics = async function(this: CollaborationDocument) {
-  const activities = this.activity;
-  const now = new Date();
-  const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-  
-  const weeklyMeetings = activities.filter(a => 
-    a.date >= weekAgo && 
-    a.type === 'meeting'
-  );
-  
-  this.metrics.weeklyMeetingHours = weeklyMeetings.reduce(
-    (acc, curr) => acc + curr.duration, 0
-  ) / 60;
-
-  const members = await (this.populate('members') as any).members;
-  const participationRates = activities.map(a => 
-    (a.participants.length / members.length) * 100
-  );
-  
-  this.metrics.avgParticipation = participationRates.reduce(
-    (acc, curr) => acc + curr, 0
-  ) / participationRates.length;
-
-  const productivityFactors = {
-    meetingEfficiency: this.metrics.weeklyMeetingHours <= 10 ? 100 : 
-      Math.max(0, 100 - (this.metrics.weeklyMeetingHours - 10) * 5),
-    participation: this.metrics.avgParticipation,
-    activityDiversity: new Set(activities.map(a => a.type)).size * 20
-  };
-
-  this.metrics.productivityScore = Math.round(
-    Object.values(productivityFactors).reduce((acc, curr) => acc + curr, 0) / 
-    Object.keys(productivityFactors).length
-  );
-
-  await this.save();
-  return this.metrics;
-};
-
-// Method to generate heatmap data
-CollaborationSchema.methods.generateHeatmap = function(this: CollaborationDocument, days = 30) {
+// Method to generate activity heatmap data
+CollaborationSchema.methods.getActivityHeatmap = function(days: number): number[] {
   const heatmapData = new Array(days).fill(0);
-  const now = new Date();
-  const startDate = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
+  const startDate = new Date();
+  startDate.setDate(startDate.getDate() - days);
 
-  this.activity.forEach(activity => {
+  this.activity.forEach((activity: Activity) => {
     if (activity.date >= startDate) {
       const dayIndex = Math.floor(
         (activity.date.getTime() - startDate.getTime()) / (24 * 60 * 60 * 1000)

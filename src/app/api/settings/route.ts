@@ -117,6 +117,36 @@ export async function PATCH(request: Request) {
 }
 
 function validateSettings(settings: Partial<UserSettings>): boolean {
-  // Add validation logic here
+  // Basic validation checks
+  if (settings.focus) {
+    const { defaultDuration, breakDuration, sessionsBeforeLongBreak } = settings.focus;
+    
+    // Validate duration settings
+    if (defaultDuration && (defaultDuration < 1 || defaultDuration > 120)) {
+      return false;
+    }
+    if (breakDuration && (breakDuration < 1 || breakDuration > 30)) {
+      return false;
+    }
+    if (sessionsBeforeLongBreak && (sessionsBeforeLongBreak < 1 || sessionsBeforeLongBreak > 10)) {
+      return false;
+    }
+  }
+
+  // Validate theme settings
+  if (settings.theme) {
+    if (settings.theme.mode && !['light', 'dark'].includes(settings.theme.mode)) {
+      return false;
+    }
+  }
+
+  // Validate notification settings
+  if (settings.notifications) {
+    const notificationValues = Object.values(settings.notifications);
+    if (notificationValues.some(value => typeof value !== 'boolean')) {
+      return false;
+    }
+  }
+
   return true;
 }

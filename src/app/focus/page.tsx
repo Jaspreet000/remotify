@@ -50,7 +50,8 @@ export default function FocusMode() {
           }));
           setBlockedItems(data.preferences.blockedItems || []);
         }
-      } catch (err) {
+      } catch (error) {
+        console.error("Failed to load preferences:", error);
         setError("Failed to load preferences");
       } finally {
         setLoading(false);
@@ -73,7 +74,7 @@ export default function FocusMode() {
     }
 
     return () => clearInterval(interval);
-  }, [isActive, timeLeft]);
+  }, [isActive, timeLeft, handleSessionComplete]);
 
   const handleSessionComplete = useCallback(async () => {
     const newSessionsCompleted = session.sessionsCompleted + 1;
@@ -98,21 +99,18 @@ export default function FocusMode() {
           body: JSON.stringify({
             duration: session.duration,
             completed: true,
+            blockedItems,
           }),
         });
-      } catch (err) {
-        console.error("Failed to log session:", err);
-      }
 
-      if (newSessionsCompleted < session.totalSessions) {
         setIsBreak(true);
         setTimeLeft(session.breakDuration);
-      } else {
-        setIsActive(false);
-        // Show completion message or notification
+      } catch (error) {
+        console.error("Failed to log session:", error);
+        setError("Failed to save session");
       }
     }
-  }, [isBreak, session]);
+  }, [isBreak, session, blockedItems]);
 
   const startSession = () => {
     setTimeLeft(session.duration);
@@ -215,7 +213,7 @@ export default function FocusMode() {
         {/* Progress Card */}
         <div className="mt-6 bg-white rounded-xl shadow-lg p-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">
-            Today's Progress
+            Today&apos;s Progress
           </h3>
           <div className="grid grid-cols-3 gap-4 text-center">
             <div>

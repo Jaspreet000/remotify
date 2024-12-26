@@ -80,13 +80,32 @@ export async function GET(req: Request) {
 }
 
 function calculateProductivityMetrics(sessions: WorkSession[]) {
+  if (!sessions.length) {
+    return {
+      averageProductivity: 0,
+      topDistractions: [],
+      bestTimeBlocks: []
+    };
+  }
+
+  // Calculate actual metrics based on sessions
+  const distractionCounts = sessions.reduce((acc, session) => {
+    session.distractions.forEach(distraction => {
+      acc[distraction] = (acc[distraction] || 0) + 1;
+    });
+    return acc;
+  }, {} as Record<string, number>);
+
+  const topDistractions = Object.entries(distractionCounts)
+    .sort(([, a], [, b]) => b - a)
+    .slice(0, 3)
+    .map(([type, count]) => ({ type, count }));
+
   return {
-    averageProductivity: 85,
-    topDistractions: [
-      { type: "Social Media", count: 15 },
-      { type: "Email", count: 10 },
-      { type: "Meetings", count: 8 }
-    ],
+    averageProductivity: Math.round(
+      sessions.reduce((acc, s) => acc + s.focusScore, 0) / sessions.length
+    ),
+    topDistractions,
     bestTimeBlocks: [
       { time: "09:00-11:00", score: 92 },
       { time: "15:00-17:00", score: 88 }

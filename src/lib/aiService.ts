@@ -1,6 +1,71 @@
 const HUGGING_FACE_API_URL = "https://api-inference.huggingface.co/models/facebook/opt-1.3b";
 
-async function query(payload: any) {
+interface HuggingFacePayload {
+  inputs: string;
+  parameters?: {
+    max_length?: number;
+    temperature?: number;
+    top_p?: number;
+  };
+}
+
+interface ProductivityData {
+  sessions: {
+    startTime: Date;
+    duration: number;
+    focusScore: number;
+    distractions: string[];
+  }[];
+  habits: {
+    summary: {
+      averageProductivity: number;
+      commonPatterns: string[];
+    };
+  };
+  preferences: {
+    workHours: {
+      start: string;
+      end: string;
+    };
+    focusPreferences: {
+      duration: number;
+      breaks: number;
+    };
+  };
+}
+
+interface UserPreferences {
+  duration: number;
+  breaks: {
+    frequency: number;
+    duration: number;
+  };
+  distractions: string[];
+  productivity: {
+    score: number;
+    factors: {
+      distractions: number;
+      breaks: number;
+      completion: boolean;
+    };
+  };
+}
+
+interface TeamData {
+  members: {
+    id: string;
+    productivity: number;
+    focusHours: number;
+  }[];
+  sessions: {
+    date: Date;
+    duration: number;
+    participants: string[];
+    productivity: number;
+  }[];
+}
+
+async function query(payload: HuggingFacePayload) {
   const response = await fetch(HUGGING_FACE_API_URL, {
     method: "POST",
     headers: {
@@ -11,26 +76,29 @@ async function query(payload: any) {
   return response.json();
 }
 
-export async function analyzeProductivityPatterns(data: any) {
+export async function analyzeProductivityPatterns(data: ProductivityData) {
   try {
     const prompt = `Analyze these productivity patterns and provide insights:
     ${JSON.stringify(data, null, 2)}`;
 
     const response = await query({ inputs: prompt });
-    return response[0].generated_text;
+    if (response && response[0]?.generated_text) {
+      return response[0].generated_text;
+    }
+    return getDefaultProductivityInsights();
   } catch (error) {
     console.error('AI Analysis Error:', error);
     return getDefaultProductivityInsights();
   }
 }
 
-export async function generateFocusSuggestions(userPreferences: any) {
+export async function generateFocusSuggestions(userPreferences: UserPreferences) {
   try {
     const prompt = `Suggest focus improvements based on: ${JSON.stringify(userPreferences)}`;
     const response = await query({ inputs: prompt });
-    return response[0].generated_text;
+    return response[0]?.generated_text || getDefaultFocusSuggestions();
   } catch (error) {
-    console.error('AI Suggestion Error:', error);
+    console.error('Focus Suggestions Error:', error);
     return getDefaultFocusSuggestions();
   }
 }
@@ -57,11 +125,11 @@ export async function generatePersonalizedChallenges(userStats: any) {
   }
 }
 
-export async function analyzeTeamProductivity(teamData: any) {
+export async function analyzeTeamDynamics(teamData: TeamData) {
   try {
-    const prompt = `Analyze team productivity for: ${JSON.stringify(teamData)}`;
+    const prompt = `Analyze team collaboration patterns: ${JSON.stringify(teamData)}`;
     const response = await query({ inputs: prompt });
-    return response[0].generated_text;
+    return response[0]?.generated_text || getDefaultTeamAnalysis();
   } catch (error) {
     console.error('Team Analysis Error:', error);
     return getDefaultTeamAnalysis();

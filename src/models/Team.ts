@@ -1,99 +1,159 @@
 import mongoose from 'mongoose';
 
+interface TeamMember {
+  userId: mongoose.Types.ObjectId;
+  role: 'admin' | 'member';
+  joinedAt: Date;
+}
+
+interface TeamSession {
+  userId: mongoose.Types.ObjectId;
+  startTime: Date;
+  duration: number;
+  type: 'focus' | 'collaboration';
+  productivity: number;
+}
+
+interface TeamMetrics {
+  totalFocusTime: number;
+  averageProductivity: number;
+  collaborationScore: number;
+  activeMembers: number;
+}
+
+interface TeamDocument extends mongoose.Document {
+  name: string;
+  description: string;
+  members: TeamMember[];
+  sessions: TeamSession[];
+  metrics: TeamMetrics;
+  settings: {
+    focusGoals: {
+      daily: number;
+      weekly: number;
+    };
+    collaborationRules: {
+      minMeetingParticipants: number;
+      maxMeetingDuration: number;
+    };
+  };
+  calculateMetrics(): Promise<TeamMetrics>;
+  getProductivityTrend(days: number): Promise<number[]>;
+  getCollaborationScore(): Promise<number>;
+}
+
 const TeamSchema = new mongoose.Schema({
   name: {
+    type: String,
+    required: true,
+    trim: true
+  },
+  description: {
     type: String,
     required: true
   },
   members: [{
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User'
-  }],
-  admins: [{
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User'
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      required: true
+    },
+    role: {
+      type: String,
+      enum: ['admin', 'member'],
+      default: 'member'
+    },
+    joinedAt: {
+      type: Date,
+      default: Date.now
+    }
   }],
   sessions: [{
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'FocusSession'
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
+    },
+    startTime: Date,
+    duration: Number,
+    type: {
+      type: String,
+      enum: ['focus', 'collaboration']
+    },
+    productivity: Number
   }],
+  metrics: {
+    totalFocusTime: { type: Number, default: 0 },
+    averageProductivity: { type: Number, default: 0 },
+    collaborationScore: { type: Number, default: 0 },
+    activeMembers: { type: Number, default: 0 }
+  },
   settings: {
-    minFocusHours: {
-      type: Number,
-      default: 4
+    focusGoals: {
+      daily: { type: Number, default: 4 },
+      weekly: { type: Number, default: 20 }
     },
-    recommendedBreaks: {
-      type: Number,
-      default: 3
-    },
-    collaborationHours: {
-      start: {
-        type: Number,
-        default: 9 // 9 AM
-      },
-      end: {
-        type: Number,
-        default: 17 // 5 PM
-      }
-    },
-    notifications: {
-      sessionAlerts: {
-        type: Boolean,
-        default: true
-      },
-      progressUpdates: {
-        type: Boolean,
-        default: true
-      },
-      teamAchievements: {
-        type: Boolean,
-        default: true
+    collaborationRules: {
+      minMeetingParticipants: { type: Number, default: 2 },
+      maxMeetingDuration: { type: Number, default: 60 }
+    }
+  }
+}, { timestamps: true });
+
+TeamSchema.methods.calculateMetrics = async function(): Promise<TeamMetrics> {
+  const recentSessions = this.sessions.filter(session => {
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    return session.startTime >= thirtyDaysAgo;
+  });
+
+  const totalFocusTime = recentSessions.reduce((acc, session) => {
+    return session.type === 'focus' ? acc + session.duration : acc;
+  }, 0);
+
+  const productiveSessions = recentSessions.filter(session => session.productivity);
+  const averageProductivity = productiveSessions.length > 0
+    ? productiveSessions.reduce((acc, session) => acc + session.productivity, 0) / productiveSessions.length
+    : 0;
+
+  const activeMembers = new Set(recentSessions.map(s => s.userId.toString())).size;
+  const memberCount = this.members.length;
+  const participationRate = memberCount > 0 ? (activeMembers / memberCount) * 100 : 0;
+
+  const metrics: TeamMetrics = {
+    totalFocusTime,
+    averageProductivity,
+    collaborationScore: participationRate,
+    activeMembers
+  };
+
+  this.metrics = metrics;
+  await this.save();
+
+  return metrics;
+};
+
+TeamSchema.methods.getProductivityTrend = async function(days: number): Promise<number[]> {
+  const trend = new Array(days).fill(0);
+  const startDate = new Date();
+  startDate.setDate(startDate.getDate() - days);
+
+  this.sessions.forEach(session => {
+    if (session.startTime >= startDate) {
+      const dayIndex = Math.floor(
+        (session.startTime.getTime() - startDate.getTime()) / (24 * 60 * 60 * 1000)
+      );
+      if (dayIndex >= 0 && dayIndex < days) {
+        trend[dayIndex] = (trend[dayIndex] * session.productivity) / 2;
       }
     }
-  },
-  metrics: {
-    averageProductivity: Number,
-    collaborationScore: Number,
-    weeklyParticipation: Number,
-    lastUpdated: Date
-  }
-}, {
-  timestamps: true
-});
+  });
 
-// Calculate team metrics before saving
-TeamSchema.pre('save', async function(next) {
-  if (this.isModified('sessions')) {
-    const recentSessions = this.sessions.filter((s: any) => 
-      new Date(s.startTime) >= new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
-    );
+  return trend;
+};
 
-    this.metrics = {
-      averageProductivity: calculateAverageProductivity(recentSessions),
-      collaborationScore: calculateCollaborationScore(recentSessions, this.members),
-      weeklyParticipation: calculateParticipation(recentSessions, this.members),
-      lastUpdated: new Date()
-    };
-  }
-  next();
-});
+TeamSchema.methods.getCollaborationScore = async function(): Promise<number> {
+  const activeMembers = new Set(this.sessions.map(s => s.userId.toString())).size;
+  return (activeMembers / this.members.length) * 100;
+};
 
-// Helper functions
-function calculateAverageProductivity(sessions: any[]) {
-  return sessions.length > 0
-    ? sessions.reduce((acc, s) => acc + (s.focusScore || 0), 0) / sessions.length
-    : 0;
-}
-
-function calculateCollaborationScore(sessions: any[], members: any[]) {
-  // Implement collaboration score calculation
-  return 0;
-}
-
-function calculateParticipation(sessions: any[], members: any[]) {
-  if (!members.length) return 0;
-  const activeMembers = new Set(sessions.map(s => s.user.toString())).size;
-  return (activeMembers / members.length) * 100;
-}
-
-export default mongoose.models.Team || mongoose.model('Team', TeamSchema); 
+export default mongoose.models.Team || mongoose.model<TeamDocument>('Team', TeamSchema); 

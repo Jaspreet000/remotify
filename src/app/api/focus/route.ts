@@ -12,16 +12,6 @@ interface DecodedToken {
   exp: number;
 }
 
-interface UserPreferences {
-  focus: {
-    defaultDuration: number;
-    breakDuration: number;
-    sessionsBeforeLongBreak: number;
-    blockedSites: string[];
-    blockedApps: string[];
-  };
-}
-
 interface FocusSessionData {
   user: string;
   startTime: Date;
@@ -52,7 +42,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ success: false, message: 'User not found' }, { status: 404 });
     }
 
-    // Get user preferences or use defaults
+    // Get user preferences directly from user model
     const preferences = {
       focusDuration: user.preferences?.focus?.defaultDuration || 25,
       breakDuration: user.preferences?.focus?.breakDuration || 5,

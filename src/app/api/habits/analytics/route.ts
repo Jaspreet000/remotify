@@ -12,15 +12,6 @@ interface DecodedToken {
   exp: number;
 }
 
-interface HabitLogData {
-  userId: string;
-  date: Date;
-  taskName: string;
-  duration: number;
-  breaks: number;
-  distractions: number;
-}
-
 export async function GET(req: Request) {
   try {
     await dbConnect();

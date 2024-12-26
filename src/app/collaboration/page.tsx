@@ -70,7 +70,8 @@ export default function Collaboration() {
         } else {
           setError(result.message);
         }
-      } catch (err) {
+      } catch (error) {
+        console.error("Collaboration data error:", error);
         setError("Failed to load collaboration data");
       } finally {
         setLoading(false);

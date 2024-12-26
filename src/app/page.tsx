@@ -1,10 +1,27 @@
 "use client";
-import { useRef, useState } from "react";
+import { useRef } from "react";
 import { motion } from "framer-motion";
+
+interface FeatureCardProps {
+  title: string;
+  description: string;
+}
+
+interface GamificationCardProps {
+  icon: string;
+  title: string;
+  features: string[];
+}
+
+interface SectionProps {
+  children: React.ReactNode;
+  index: number;
+  totalSections: number;
+  scrollToSection: (index: number) => void;
+}
 
 const HomePage = () => {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [activeSection, setActiveSection] = useState(0);
   const totalSections = 5;
 
   const scrollToSection = (index: number) => {
@@ -12,7 +29,6 @@ const HomePage = () => {
     const container = containerRef.current;
     const section = container?.querySelector(`section[data-index="${index}"]`);
     section?.scrollIntoView({ behavior: "smooth" });
-    setActiveSection(index);
   };
 
   return (
@@ -62,37 +78,16 @@ const HomePage = () => {
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
                 <FeatureCard
-                  icon="🎯"
                   title="Smart Focus Sessions"
                   description="AI-driven focus sessions with personalized duration and break recommendations."
-                  features={[
-                    "Pomodoro Technique",
-                    "Distraction Blocking",
-                    "Break Management",
-                    "Environment Analysis",
-                  ]}
                 />
                 <FeatureCard
-                  icon="📊"
                   title="Advanced Analytics"
                   description="Comprehensive productivity tracking with AI insights."
-                  features={[
-                    "Focus Score Tracking",
-                    "Productivity Patterns",
-                    "Peak Hours Analysis",
-                    "Progress Visualization",
-                  ]}
                 />
                 <FeatureCard
-                  icon="🤝"
                   title="Team Collaboration"
                   description="Enhanced team productivity features with real-time insights."
-                  features={[
-                    "Team Analytics",
-                    "Shared Sessions",
-                    "Progress Tracking",
-                    "Performance Metrics",
-                  ]}
                 />
               </div>
             </div>
@@ -210,29 +205,19 @@ const HomePage = () => {
   );
 };
 
-// Enhanced Components
-const FeatureCard = ({ icon, title, description, features }: any) => (
+const FeatureCard = ({ title, description }: FeatureCardProps) => (
   <motion.div
     initial={{ opacity: 0, y: 20 }}
     whileInView={{ opacity: 1, y: 0 }}
     viewport={{ once: true }}
-    className="p-6 bg-white rounded-xl shadow-xl hover:shadow-2xl transition-shadow"
+    className="p-6 bg-white rounded-xl shadow-lg hover:shadow-xl transition-shadow"
   >
-    <div className="text-5xl mb-4">{icon}</div>
-    <h3 className="text-xl font-bold mb-2">{title}</h3>
-    <p className="text-gray-600 mb-4">{description}</p>
-    <ul className="space-y-2">
-      {features.map((feature: string, index: number) => (
-        <li key={index} className="flex items-center text-gray-700">
-          <span className="mr-2">•</span>
-          {feature}
-        </li>
-      ))}
-    </ul>
+    <h3 className="text-lg font-bold mb-2 text-gray-900">{title}</h3>
+    <p className="text-gray-600">{description}</p>
   </motion.div>
 );
 
-const AIFeatureCard = ({ title, description }: any) => (
+const AIFeatureCard = ({ title, description }: FeatureCardProps) => (
   <motion.div
     initial={{ opacity: 0, y: 20 }}
     whileInView={{ opacity: 1, y: 0 }}
@@ -244,7 +229,7 @@ const AIFeatureCard = ({ title, description }: any) => (
   </motion.div>
 );
 
-const GamificationCard = ({ icon, title, features }: any) => (
+const GamificationCard = ({ icon, title, features }: GamificationCardProps) => (
   <motion.div
     initial={{ opacity: 0, y: 20 }}
     whileInView={{ opacity: 1, y: 0 }}
@@ -254,7 +239,7 @@ const GamificationCard = ({ icon, title, features }: any) => (
     <div className="text-4xl mb-4">{icon}</div>
     <h3 className="text-xl font-bold mb-4">{title}</h3>
     <ul className="space-y-3">
-      {features.map((feature: string, index: number) => (
+      {features.map((feature, index) => (
         <li key={index} className="flex items-center text-white/90">
           <span className="mr-2">→</span>
           {feature}
@@ -264,7 +249,12 @@ const GamificationCard = ({ icon, title, features }: any) => (
   </motion.div>
 );
 
-const Section = ({ children, index, totalSections, scrollToSection }: any) => (
+const Section = ({
+  children,
+  index,
+  totalSections,
+  scrollToSection,
+}: SectionProps) => (
   <section className="relative w-full min-h-screen" data-index={index}>
     {children}
     <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex gap-4">

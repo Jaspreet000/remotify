@@ -128,6 +128,97 @@ interface SystemSettings {
   };
 }
 
+interface UserDocument extends mongoose.Document {
+  email: string;
+  password: string;
+  name: string;
+  role: 'user' | 'admin';
+  preferences: {
+    focus: {
+      defaultDuration: number;
+      breakDuration: number;
+      sessionsBeforeLongBreak: number;
+      blockedSites: string[];
+      blockedApps: string[];
+    };
+    notifications: {
+      enabled: boolean;
+      breakReminders: boolean;
+      progressUpdates: boolean;
+      teamActivity: boolean;
+    };
+    theme: {
+      mode: 'light' | 'dark';
+      color: string;
+    };
+  };
+  gameStats: {
+    level: number;
+    experience: number;
+    achievements: string[];
+    streaks: {
+      current: number;
+      longest: number;
+      lastActive: Date;
+    };
+  };
+  adminControls?: {
+    canManageUsers: boolean;
+    canManageTeams: boolean;
+    canViewAnalytics: boolean;
+    accessLevel: number;
+  };
+  systemSettings?: {
+    dataRetention: number;
+    backupFrequency: number;
+    automatedReports: boolean;
+  };
+  workSessions: mongoose.Types.ObjectId[];
+  teams: mongoose.Types.ObjectId[];
+  habitAnalysis: HabitAnalysis[];
+  getRecentHabitAnalysis(days: number): HabitAnalysis[];
+  calculateProductivityScore(): Promise<number>;
+  updateGameStats(action: string, value: number): Promise<void>;
+  getAchievements(): Promise<Achievement[]>;
+}
+
+interface HabitAnalysis {
+  date: Date;
+  focusTime: number;
+  productivity: number;
+  distractions: number;
+  breaks: number;
+  summary: {
+    strengths: string[];
+    weaknesses: string[];
+    recommendations: string[];
+  };
+}
+
+interface Achievement {
+  id: string;
+  name: string;
+  description: string;
+  criteria: {
+    type: string;
+    value: number;
+  };
+  reward: {
+    experience: number;
+    badge?: string;
+  };
+}
+
+interface ProductivityScore {
+  score: number;
+  factors: {
+    focusTime: number;
+    distractions: number;
+    consistency: number;
+    completion: number;
+  };
+}
+
 const UserSchema = new mongoose.Schema(
   {
     name: { type: String, required: true },
@@ -375,21 +466,13 @@ UserSchema.methods.toSafeObject = function() {
 };
 
 // Add method to get recent habit analysis
-UserSchema.methods.getRecentHabitAnalysis = function(days = 7) {
-  const recent = this.habitAnalysis
-    .sort((a: any, b: any) => b.date - a.date)
-    .slice(0, days);
+UserSchema.methods.getRecentHabitAnalysis = function(days: number): HabitAnalysis[] {
+  const cutoffDate = new Date();
+  cutoffDate.setDate(cutoffDate.getDate() - days);
   
-  return {
-    analysis: recent,
-    summary: {
-      averageProductiveHours: recent.reduce((acc: number, curr: any) => 
-        acc + curr.productiveHours, 0) / recent.length,
-      topSuggestions: recent.flatMap((a: any) => 
-        a.aiSuggestions.filter((s: any) => s.priority >= 4)
-      ).slice(0, 3)
-    }
-  };
+  return this.habitAnalysis.filter((analysis: HabitAnalysis) => 
+    analysis.date >= cutoffDate
+  );
 };
 
 // Add method to update focus stats
@@ -644,4 +727,66 @@ UserSchema.methods.logAdminAction = async function(actionData: {
   });
 };
 
-export default mongoose.models.User || mongoose.model('User', UserSchema);
+UserSchema.methods.calculateProductivityScore = async function(): Promise<ProductivityScore> {
+  const recentSessions = await mongoose.model('WorkSession').find({
+    user: this._id,
+    startTime: { $gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) }
+  });
+
+  const focusTime = recentSessions.reduce((acc, session) => acc + session.duration, 0);
+  const distractions = recentSessions.reduce((acc, session) => acc + session.distractions.length, 0);
+  const completedSessions = recentSessions.filter(session => session.completed).length;
+  const consistency = this.calculateConsistencyScore(recentSessions);
+
+  const score = {
+    focusTime: Math.min(focusTime / (28 * 60), 1) * 25, // Max 25 points
+    distractions: Math.max(1 - (distractions / recentSessions.length / 10), 0) * 25, // Max 25 points
+    consistency: consistency * 25, // Max 25 points
+    completion: (completedSessions / recentSessions.length) * 25 // Max 25 points
+  };
+
+  return {
+    score: Object.values(score).reduce((a, b) => a + b, 0),
+    factors: score
+  };
+};
+
+UserSchema.methods.updateGameStats = async function(action: string, value: number): Promise<void> {
+  const experiencePoints = calculateExperience(action, value);
+  this.gameStats.experience += experiencePoints;
+  
+  // Level up logic
+  while (this.gameStats.experience >= calculateRequiredExperience(this.gameStats.level)) {
+    this.gameStats.level += 1;
+  }
+
+  await this.save();
+};
+
+UserSchema.methods.getAchievements = async function(): Promise<Achievement[]> {
+  const achievements = await mongoose.model('Achievement').find({
+    'criteria.type': { $in: Object.keys(this.gameStats) }
+  });
+
+  return achievements.filter(achievement => 
+    this.gameStats[achievement.criteria.type] >= achievement.criteria.value
+  );
+};
+
+// Helper functions with proper typing
+function calculateExperience(action: string, value: number): number {
+  const experienceRates: Record<string, number> = {
+    focusSession: 10,
+    teamCollaboration: 15,
+    achievementUnlocked: 50
+  };
+
+  return (experienceRates[action] || 0) * value;
+}
+
+function calculateRequiredExperience(level: number): number {
+  return Math.floor(100 * Math.pow(1.5, level - 1));
+}
+
+export default mongoose.models.User as mongoose.Model<UserDocument> || 
+  mongoose.model<UserDocument>('User', UserSchema);

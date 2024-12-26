@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import LoadingSpinner from "@/components/LoadingSpinner";
 
 interface LeaderboardEntry {
@@ -43,7 +44,8 @@ export default function Leaderboard() {
         } else {
           setError(result.message);
         }
-      } catch (err) {
+      } catch (error) {
+        console.error("Leaderboard fetch error:", error);
         setError("Failed to load leaderboard data");
       } finally {
         setLoading(false);
@@ -54,6 +56,18 @@ export default function Leaderboard() {
   }, [timeframe]);
 
   if (loading) return <LoadingSpinner />;
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 px-4 py-12">
+        <div className="max-w-7xl mx-auto">
+          <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-md">
+            <p className="text-red-700">{error}</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 px-4 py-12">
@@ -89,11 +103,8 @@ export default function Leaderboard() {
           </div>
         </div>
 
-        {error ? (
-          <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-md">
-            <p className="text-red-700">{error}</p>
-          </div>
-        ) : (
+        {/* Leaderboard Table */}
+        {leaderboardData.length > 0 && (
           <div className="bg-white rounded-xl shadow-lg overflow-hidden">
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
@@ -147,12 +158,14 @@ export default function Leaderboard() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">
-                          <div className="flex-shrink-0 h-10 w-10">
+                          <div className="flex-shrink-0 h-10 w-10 relative">
                             {entry.user.avatar ? (
-                              <img
-                                className="h-10 w-10 rounded-full"
+                              <Image
                                 src={entry.user.avatar}
-                                alt=""
+                                alt={`${entry.user.name}'s avatar`}
+                                fill
+                                className="rounded-full"
+                                sizes="40px"
                               />
                             ) : (
                               <div className="h-10 w-10 rounded-full bg-gradient-to-br from-yellow-400 to-orange-500 flex items-center justify-center">
