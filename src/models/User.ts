@@ -63,71 +63,6 @@ interface Badge {
   earnedAt: Date;
 }
 
-interface GameStats {
-  level: number;
-  experience: number;
-  streak: {
-    current: number;
-    longest: number;
-    lastActiveDate: Date;
-  };
-  achievements: Achievement[];
-  badges: Badge[];
-  milestones: {
-    totalFocusHours: number;
-    tasksCompleted: number;
-    collaborationScore: number;
-    perfectDays: number;
-  };
-  rankings: {
-    global: number;
-    monthly: number;
-    teamRank: number;
-    lastUpdated: Date;
-  };
-}
-
-interface AdminControls {
-  canManageUsers: boolean;
-  canManageTeams: boolean;
-  canConfigurePlatform: boolean;
-  canViewAnalytics: boolean;
-  accessLevel: 'full' | 'limited';
-}
-
-interface SystemSettings {
-  emailNotifications: {
-    dailyDigest: boolean;
-    weeklyReport: boolean;
-    teamUpdates: boolean;
-    achievementAlerts: boolean;
-  };
-  pushNotifications: {
-    focusReminders: boolean;
-    breakReminders: boolean;
-    teamMentions: boolean;
-    milestoneAlerts: boolean;
-  };
-  privacy: {
-    shareStats: boolean;
-    showOnLeaderboard: boolean;
-    publicProfile: boolean;
-    activityVisibility: 'public' | 'team' | 'private';
-  };
-  accessibility: {
-    highContrast: boolean;
-    fontSize: 'small' | 'medium' | 'large';
-    reduceAnimations: boolean;
-    screenReaderOptimized: boolean;
-  };
-  integrationPreferences: {
-    defaultCalendar: 'google' | 'outlook' | 'apple';
-    defaultCommunication: 'slack' | 'teams' | 'discord';
-    autoSync: boolean;
-    syncFrequency: 'realtime' | 'hourly' | 'daily';
-  };
-}
-
 interface UserDocument extends mongoose.Document {
   email: string;
   password: string;
@@ -186,6 +121,18 @@ interface UserDocument extends mongoose.Document {
       showOnLeaderboard: boolean;
       publicProfile: boolean;
       activityVisibility: 'public' | 'team' | 'private';
+    };
+    accessibility: {
+      highContrast: boolean;
+      fontSize: 'small' | 'medium' | 'large';
+      reduceAnimations: boolean;
+      screenReaderOptimized: boolean;
+    };
+    integrationPreferences: {
+      defaultCalendar: 'google' | 'outlook' | 'apple';
+      defaultCommunication: 'slack' | 'teams' | 'discord';
+      autoSync: boolean;
+      syncFrequency: 'realtime' | 'hourly' | 'daily';
     };
   };
   workSessions: mongoose.Types.ObjectId[];
