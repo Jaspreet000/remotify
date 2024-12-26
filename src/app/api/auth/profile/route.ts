@@ -3,6 +3,35 @@ import { dbConnect } from '@/lib/dbConnect';
 import { verifyToken } from '@/lib/auth';
 import User from '@/models/User';
 
+interface DecodedToken {
+  id: string;
+  email: string;
+  role: string;
+  iat: number;
+  exp: number;
+}
+
+interface UserProfile {
+  name: string;
+  email: string;
+  role: string;
+  avatar?: string;
+  joinedAt: Date;
+  stats: {
+    totalFocusHours: number;
+    tasksCompleted: number;
+    currentStreak: number;
+    longestStreak: number;
+  };
+  achievements: Array<{
+    id: string;
+    name: string;
+    date: Date;
+  }>;
+  badges: string[];
+  teams: string[];
+}
+
 export async function GET(request: Request) {
   try {
     await dbConnect();
@@ -16,7 +45,7 @@ export async function GET(request: Request) {
     }
 
     const token = authHeader.split(' ')[1];
-    const decoded: any = verifyToken(token);
+    const decoded = verifyToken(token) as DecodedToken;
 
     const user = await User.findById(decoded.id).select('-password');
     if (!user) {
@@ -26,8 +55,7 @@ export async function GET(request: Request) {
       );
     }
 
-    // Format the response to match the expected interface
-    const formattedUser = {
+    const formattedUser: UserProfile = {
       name: user.name,
       email: user.email,
       role: user.role,
@@ -70,7 +98,7 @@ export async function PATCH(request: Request) {
     }
 
     const token = authHeader.split(' ')[1];
-    const decoded: any = verifyToken(token);
+    const decoded = verifyToken(token) as DecodedToken;
     const updates = await request.json();
 
     const user = await User.findByIdAndUpdate(
