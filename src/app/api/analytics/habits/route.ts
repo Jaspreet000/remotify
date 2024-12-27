@@ -3,7 +3,6 @@ import { dbConnect } from "@/lib/dbConnect";
 import User from "@/models/User";
 import { verifyToken } from "@/lib/auth";
 import { analyzeProductivityPatterns } from "@/lib/aiService";
-import { JWTPayload } from '@/lib/auth';
 
 interface WorkSession {
   startTime: Date;
