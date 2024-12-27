@@ -52,11 +52,7 @@ interface UserPreferences {
 }
 
 export interface TeamData {
-  metrics: {
-    averageProductivity: number;
-    collaborationScore: number;
-    participationRate: number;
-  };
+  metrics: TeamMetrics;
   sessions: {
     date: Date;
     duration: number;

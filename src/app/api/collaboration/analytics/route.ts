@@ -63,6 +63,13 @@ interface TeamAnalytics {
   }>;
 }
 
+interface TeamSession {
+  startTime: Date;
+  duration: number;
+  participants: string[];
+  productivity: number;
+}
+
 export async function GET(request: Request) {
   try {
     await dbConnect();
@@ -133,27 +140,23 @@ export async function GET(request: Request) {
   }
 }
 
-function calculateTeamMetrics(sessions: any[]): {
-  averageProductivity: number;
-  collaborationScore: number;
-  participationRate: number;
-} {
+function calculateTeamMetrics(sessions: TeamSession[]): TeamMetrics {
   if (!sessions.length) {
     return {
+      totalFocusHours: 0,
       averageProductivity: 0,
-      collaborationScore: 0,
-      participationRate: 0
+      activeMembers: 0,
+      totalSessions: 0,
+      weeklyParticipation: 0
     };
   }
 
-  const avgProductivity = sessions.reduce((acc, s) => acc + s.productivity, 0) / sessions.length;
-  const collaborationScore = sessions.reduce((acc, s) => acc + (s.participants.length > 1 ? 1 : 0), 0) / sessions.length * 100;
-  const participationRate = sessions.reduce((acc, s) => acc + s.participants.length, 0) / (sessions.length * team.members.length) * 100;
-
   return {
-    averageProductivity: Math.round(avgProductivity),
-    collaborationScore: Math.round(collaborationScore),
-    participationRate: Math.round(participationRate)
+    totalFocusHours: sessions.reduce((acc, s) => acc + s.duration / 60, 0),
+    averageProductivity: Math.round(sessions.reduce((acc, s) => acc + s.productivity, 0) / sessions.length),
+    activeMembers: new Set(sessions.flatMap(s => s.participants)).size,
+    totalSessions: sessions.length,
+    weeklyParticipation: Math.round(sessions.reduce((acc, s) => acc + s.participants.length, 0) / sessions.length)
   };
 }
 
