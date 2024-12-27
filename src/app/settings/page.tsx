@@ -36,14 +36,12 @@ interface FormField {
 type SettingsValue = string | number | boolean;
 
 type SettingsSection = {
-  [key: string]: SettingsValue | Record<string, SettingsValue>;
+  [key: string]:
+    | SettingsValue
+    | {
+        [key: string]: SettingsValue;
+      };
 };
-
-interface SettingsObject {
-  [section: string]: {
-    [key: string]: SettingsValue | Record<string, SettingsValue>;
-  };
-}
 
 export default function Settings() {
   const [settings, setSettings] = useState<UserSettings | null>(null);
@@ -109,11 +107,11 @@ export default function Settings() {
     const newSettings = {
       ...settings,
       [field.section]: {
-        ...(settings[field.section] as Record<string, any>),
+        ...settings[field.section],
         ...(field.subsection
           ? {
               [field.subsection]: {
-                ...(settings[field.section] as any)[field.subsection],
+                ...((settings[field.section] as any)[field.subsection] || {}),
                 [field.id]: value,
               },
             }
