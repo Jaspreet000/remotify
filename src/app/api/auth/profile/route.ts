@@ -56,10 +56,20 @@ export async function GET(request: Request) {
       createdAt: Date;
       focusStats?: {
         totalFocusTime: number;
+        totalSessions: number;
+        streaks?: {
+          current: number;
+          longest: number;
+        };
       };
       profile?: {
         avatar?: string;
       };
+      gamification?: {
+        achievements: Array<{ id: string; name: string; date: Date }>;
+        badges: string[];
+      };
+      teams?: string[];
     };
 
     if (!user) {
