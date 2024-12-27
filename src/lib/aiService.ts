@@ -1,3 +1,6 @@
+import type { UserPreferences } from '@/app/api/dashboard/route';
+import mongoose from 'mongoose';
+
 const HUGGING_FACE_API_URL = "https://api-inference.huggingface.co/models/facebook/opt-1.3b";
 
 interface HuggingFacePayload {
@@ -34,23 +37,6 @@ export interface ProductivityData {
   };
 }
 
-interface UserPreferences {
-  duration: number;
-  breaks: {
-    frequency: number;
-    duration: number;
-  };
-  distractions: string[];
-  productivity: {
-    score: number;
-    factors: {
-      distractions: number;
-      breaks: number;
-      completion: boolean;
-    };
-  };
-}
-
 export interface TeamData {
   metrics: TeamMetrics;
   sessions: {
@@ -67,38 +53,62 @@ export interface TeamData {
 }
 
 interface UserStats {
-  focusTime: number;
-  completedSessions: number;
-  productivity: number;
-  streaks: {
-    current: number;
-    longest: number;
-  };
-  habits: {
-    commonTimes: string[];
-    preferredDuration: number;
-    distractionPatterns: string[];
-  };
+  level: number;
+  experience: number;
+  achievements: Array<{
+    id: string;
+    name: string;
+    date: Date;
+  }>;
+  recentActivity: Array<{
+    type: string;
+    score: number;
+    timestamp: Date;
+  }>;
 }
 
-interface UserData {
-  stats: UserStats;
-  preferences: {
-    workHours: {
-      start: string;
-      end: string;
-    };
-    focusPreferences: {
-      duration: number;
-      breaks: number;
+interface WorkSession {
+  _id: mongoose.Types.ObjectId;
+  startTime: Date;
+  duration: number;
+  focusScore: number;
+}
+
+export interface UserData {
+  focusStats: {
+    totalSessions: number;
+    totalFocusTime: number;
+    averageFocusScore: number;
+    todayProgress: {
+      completedSessions: number;
+      totalFocusTime: number;
+      targetHours: number;
     };
   };
-  history: {
-    date: Date;
-    sessions: number;
-    focusTime: number;
-    productivity: number;
-  }[];
+  recentSessions: WorkSession[];
+  preferences: UserPreferences;
+  habitAnalysis: HabitAnalysis;
+}
+
+export interface TeamMetrics {
+  totalFocusHours: number;
+  averageProductivity: number;
+  activeMembers: number;
+  totalSessions: number;
+  weeklyParticipation: number;
+}
+
+interface HabitAnalysis {
+  date: Date;
+  focusTime: number;
+  productivity: number;
+  distractions: number;
+  breaks: number;
+  summary: {
+    strengths: string[];
+    weaknesses: string[];
+    recommendations: string[];
+  };
 }
 
 async function query(payload: HuggingFacePayload) {

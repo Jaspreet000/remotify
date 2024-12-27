@@ -86,6 +86,8 @@ const FocusSessionSchema = new mongoose.Schema({
 // Calculate focus score before saving
 FocusSessionSchema.pre('save', async function(next) {
   if (this.isCompleted && !this.focusScore) {
+    if (!this.endTime || !this.startTime) return 0;
+
     const plannedDuration = this.duration * 60 * 1000;
     const actualDuration = this.endTime.getTime() - this.startTime.getTime();
     
@@ -155,10 +157,23 @@ FocusSessionSchema.methods.getStats = function() {
 // Add AI-powered methods
 FocusSessionSchema.methods.getPersonalizedSuggestions = async function() {
   const suggestions = await generateFocusSuggestions({
-    duration: this.duration,
-    breaks: this.breaks,
-    distractions: this.distractions,
-    productivity: this.productivity
+    focus: {
+      defaultDuration: this.duration,
+      breakDuration: this.breaks.length,
+      sessionsBeforeLongBreak: 4,
+      blockedSites: [],
+      blockedApps: []
+    },
+    notifications: {
+      enabled: true,
+      breakReminders: true,
+      progressUpdates: true,
+      teamActivity: true
+    },
+    theme: {
+      mode: 'light',
+      color: 'blue'
+    }
   });
   
   this.aiSuggestions.push(...suggestions);

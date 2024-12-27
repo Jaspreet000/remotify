@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { dbConnect } from "@/lib/dbConnect";
 import Collaboration from "@/models/Collaboration";
 import { verifyToken } from "@/lib/auth";
+import mongoose from "mongoose";
 
 interface DecodedToken {
   id: string;
@@ -12,15 +13,15 @@ interface DecodedToken {
 }
 
 interface CollaborationData {
-  user: string;
-  team: string;
+  teamId: mongoose.Types.ObjectId;
   activity: {
-    type: string;
+    date: Date;
+    type: 'meeting' | 'task' | 'focus-session' | 'code-review' | 'pair-programming';
     duration: number;
-    participants: string[];
-    outcome: string;
-  };
-  timestamp: Date;
+    participants: { userId: mongoose.Types.ObjectId; contribution: number; }[];
+    platform: 'slack' | 'google-meet' | 'zoom' | 'in-person' | 'other';
+    metadata: { [key: string]: any };
+  }[];
 }
 
 // GET: Fetch collaboration insights
@@ -65,10 +66,15 @@ export async function POST(request: Request) {
     }
 
     const newCollaboration: CollaborationData = {
-      user: decoded.id,
-      team,
-      activity,
-      timestamp: new Date()
+      teamId: new mongoose.Types.ObjectId(team),
+      activity: [{
+        date: new Date(),
+        type: activity.type,
+        duration: activity.duration,
+        participants: activity.participants,
+        platform: activity.platform,
+        metadata: activity.metadata
+      }]
     };
 
     const savedCollaboration = await Collaboration.create(newCollaboration);

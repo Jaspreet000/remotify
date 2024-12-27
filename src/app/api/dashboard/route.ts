@@ -3,6 +3,7 @@ import { dbConnect } from '@/lib/dbConnect';
 import User from '@/models/User';
 import { verifyToken } from '@/lib/auth';
 import { getPersonalizedRecommendations } from '@/lib/aiService';
+import mongoose from 'mongoose';
 
 interface DecodedToken {
   id: string;
@@ -13,35 +14,43 @@ interface DecodedToken {
 }
 
 interface WorkSession {
+  _id: mongoose.Types.ObjectId;
   startTime: Date;
   duration: number;
   focusScore: number;
 }
 
-interface UserPreferences {
-  dailyFocusHours: number;
-  workingHours: {
-    start: number;
-    end: number;
+export interface UserPreferences {
+  focus: {
+    defaultDuration: number;
+    breakDuration: number;
+    sessionsBeforeLongBreak: number;
+    blockedSites: string[];
+    blockedApps: string[];
   };
-  breakDuration: number;
+  notifications: {
+    enabled: boolean;
+    breakReminders: boolean;
+    progressUpdates: boolean;
+    teamActivity: boolean;
+  };
+  theme: {
+    mode: 'light' | 'dark';
+    color: string;
+  };
 }
 
 interface HabitAnalysis {
+  date: Date;
+  focusTime: number;
+  productivity: number;
+  distractions: number;
+  breaks: number;
   summary: {
-    averageProductivity: number;
-    topDistractions: Array<{ type: string; count: number }>;
-    bestTimeBlocks: Array<{ time: string; score: number }>;
+    strengths: string[];
+    weaknesses: string[];
+    recommendations: string[];
   };
-  trends: {
-    daily: Array<{ date: string; score: number }>;
-    weekly: Array<{ week: string; average: number }>;
-  };
-  insights: Array<{
-    type: string;
-    message: string;
-    impact: number;
-  }>;
 }
 
 interface UserData {
@@ -103,7 +112,7 @@ export async function GET(request: Request) {
     const decoded = verifyToken(token) as DecodedToken;
 
     const user = await User.findById(decoded.id)
-      .populate('workSessions')
+      .populate<{ workSessions: WorkSession[] }>('workSessions')
       .populate('habitAnalysis')
       .lean();
 
@@ -126,7 +135,7 @@ export async function GET(request: Request) {
       todayProgress: {
         completedSessions: todaySessions.length,
         totalFocusTime: todaySessions.reduce((acc, session) => acc + session.duration, 0),
-        targetHours: user.preferences?.dailyFocusHours || 8
+        targetHours: user.preferences?.focus?.defaultDuration || 8
       }
     };
 
@@ -134,7 +143,18 @@ export async function GET(request: Request) {
       focusStats,
       recentSessions,
       preferences: user.preferences,
-      habitAnalysis: user.habitAnalysis
+      habitAnalysis: user.habitAnalysis[0] || {
+        date: new Date(),
+        focusTime: 0,
+        productivity: 0,
+        distractions: 0,
+        breaks: 0,
+        summary: {
+          strengths: [],
+          weaknesses: [],
+          recommendations: []
+        }
+      }
     };
 
     const recommendations = await getPersonalizedRecommendations(userData);
@@ -214,7 +234,7 @@ function calculateProductivityScore(userData: UserData): number {
   };
 
   const focusTimeScore = Math.min(
-    (userData.focusStats.totalFocusTime / (userData.preferences?.dailyFocusHours * 60)) * 100,
+    (userData.focusStats.totalFocusTime / (userData.preferences?.focus?.defaultDuration * 60)) * 100,
     100
   );
 

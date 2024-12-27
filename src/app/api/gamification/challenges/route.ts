@@ -62,7 +62,10 @@ export async function GET(request: Request) {
     const decoded = verifyToken(token) as DecodedToken;
 
     const user = await User.findById(decoded.id)
-      .populate('workSessions')
+      .populate<{ workSessions: Array<{
+        focusScore: number;
+        startTime: Date;
+      }> }>('workSessions')
       .populate('teams');
 
     if (!user) {
@@ -143,8 +146,8 @@ export async function POST(request: Request) {
   }
 }
 
-function calculateUserLevel(user: { experience: number }): number {
-  const baseXP = 1000; // XP needed for first level
+function calculateUserLevel(user: any): number {
+  const baseXP = 1000;
   const experience = user.experience || 0;
   return Math.floor(Math.log(experience / baseXP + 1) / Math.log(1.5)) + 1;
 }

@@ -60,6 +60,7 @@ export interface UserDocument extends mongoose.Document {
   password: string;
   name: string;
   role: 'user' | 'admin';
+  experience: number;
   lastLogin: Date;
   preferences: {
     focus: {
@@ -142,6 +143,25 @@ export interface UserDocument extends mongoose.Document {
     category: 'focus' | 'productivity' | 'collaboration' | 'streak';
     earnedAt: Date;
   }>;
+  settings: {
+    focus: {
+      defaultDuration: number;
+      breakDuration: number;
+      sessionsBeforeLongBreak: number;
+      blockedSites: string[];
+      blockedApps: string[];
+    };
+    notifications: {
+      enabled: boolean;
+      breakReminders: boolean;
+      progressUpdates: boolean;
+      teamActivity: boolean;
+    };
+    theme: {
+      mode: 'light' | 'dark';
+      color: string;
+    };
+  };
 }
 
 interface AdminAction {
@@ -382,60 +402,7 @@ const UserSchema = new mongoose.Schema(
         lastUpdated: { type: Date, default: Date.now }
       }
     },
-    settings: {
-      system: {
-        emailNotifications: {
-          dailyDigest: { type: Boolean, default: true },
-          weeklyReport: { type: Boolean, default: true },
-          teamUpdates: { type: Boolean, default: true },
-          achievementAlerts: { type: Boolean, default: true }
-        },
-        pushNotifications: {
-          focusReminders: { type: Boolean, default: true },
-          breakReminders: { type: Boolean, default: true },
-          teamMentions: { type: Boolean, default: true },
-          milestoneAlerts: { type: Boolean, default: true }
-        },
-        privacy: {
-          shareStats: { type: Boolean, default: true },
-          showOnLeaderboard: { type: Boolean, default: true },
-          publicProfile: { type: Boolean, default: true },
-          activityVisibility: { 
-            type: String, 
-            enum: ['public', 'team', 'private'], 
-            default: 'team' 
-          }
-        },
-        accessibility: {
-          highContrast: { type: Boolean, default: false },
-          fontSize: { 
-            type: String, 
-            enum: ['small', 'medium', 'large'], 
-            default: 'medium' 
-          },
-          reduceAnimations: { type: Boolean, default: false },
-          screenReaderOptimized: { type: Boolean, default: false }
-        },
-        integrationPreferences: {
-          defaultCalendar: { 
-            type: String, 
-            enum: ['google', 'outlook', 'apple'], 
-            default: 'google' 
-          },
-          defaultCommunication: { 
-            type: String, 
-            enum: ['slack', 'teams', 'discord'], 
-            default: 'slack' 
-          },
-          autoSync: { type: Boolean, default: true },
-          syncFrequency: { 
-            type: String, 
-            enum: ['realtime', 'hourly', 'daily'], 
-            default: 'realtime' 
-          }
-        }
-      }
-    },
+    experience: { type: Number, default: 0 },
     adminControls: {
       canManageUsers: { type: Boolean, default: false },
       canManageTeams: { type: Boolean, default: false },

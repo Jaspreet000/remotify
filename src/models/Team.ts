@@ -42,6 +42,11 @@ interface TeamDocument extends mongoose.Document {
   getCollaborationScore(): Promise<number>;
 }
 
+interface Session {
+  startTime: Date;
+  duration: number;
+}
+
 const TeamSchema = new mongoose.Schema({
   name: {
     type: String,
@@ -100,22 +105,22 @@ const TeamSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 TeamSchema.methods.calculateMetrics = async function(): Promise<TeamMetrics> {
-  const recentSessions = this.sessions.filter(session => {
+  const recentSessions = this.sessions.filter((session: Session) => {
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
     return session.startTime >= thirtyDaysAgo;
   });
 
-  const totalFocusTime = recentSessions.reduce((acc, session) => {
+  const totalFocusTime = recentSessions.reduce((acc: number, session: TeamSession) => {
     return session.type === 'focus' ? acc + session.duration : acc;
   }, 0);
 
-  const productiveSessions = recentSessions.filter(session => session.productivity);
+  const productiveSessions = recentSessions.filter((session: TeamSession) => session.productivity);
   const averageProductivity = productiveSessions.length > 0
-    ? productiveSessions.reduce((acc, session) => acc + session.productivity, 0) / productiveSessions.length
+    ? productiveSessions.reduce((acc: number, session: TeamSession) => acc + session.productivity, 0) / productiveSessions.length
     : 0;
 
-  const activeMembers = new Set(recentSessions.map(s => s.userId.toString())).size;
+  const activeMembers = new Set(recentSessions.map((s: TeamSession) => s.userId.toString())).size;
   const memberCount = this.members.length;
   const participationRate = memberCount > 0 ? (activeMembers / memberCount) * 100 : 0;
 
@@ -137,7 +142,7 @@ TeamSchema.methods.getProductivityTrend = async function(days: number): Promise<
   const startDate = new Date();
   startDate.setDate(startDate.getDate() - days);
 
-  this.sessions.forEach(session => {
+  this.sessions.forEach((session: TeamSession) => {
     if (session.startTime >= startDate) {
       const dayIndex = Math.floor(
         (session.startTime.getTime() - startDate.getTime()) / (24 * 60 * 60 * 1000)
@@ -152,7 +157,7 @@ TeamSchema.methods.getProductivityTrend = async function(days: number): Promise<
 };
 
 TeamSchema.methods.getCollaborationScore = async function(): Promise<number> {
-  const activeMembers = new Set(this.sessions.map(s => s.userId.toString())).size;
+  const activeMembers = new Set(this.sessions.map((s: TeamSession) => s.userId.toString())).size;
   return (activeMembers / this.members.length) * 100;
 };
 

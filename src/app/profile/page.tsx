@@ -7,29 +7,50 @@ import Image from "next/image";
 interface UserProfile {
   name: string;
   email: string;
+  avatar?: string;
+  joinedAt: string;
   stats: {
     focusTime: number;
     completedSessions: number;
     averageScore: number;
     currentStreak: number;
+    totalFocusHours: number;
+    longestStreak: number;
   };
   achievements: Array<{
     id: string;
     name: string;
     description: string;
     unlockedAt: string;
+    icon: string;
   }>;
   preferences: {
     theme: string;
     notifications: boolean;
     focusDuration: number;
   };
+  badges: Array<{
+    id: string;
+    name: string;
+    tier: "bronze" | "silver" | "gold" | "platinum";
+    category: "focus" | "productivity" | "collaboration" | "streak";
+  }>;
+  teams: Array<{
+    name: string;
+    role: "member" | "lead" | "admin";
+    joinedAt: string;
+  }>;
 }
 
 export default function Profile() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [editedName, setEditedName] = useState("");
+  const [isEditing, setIsEditing] = useState(false);
+  const [activeSection, setActiveSection] = useState<
+    "overview" | "preferences" | "achievements" | "teams"
+  >("overview");
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -57,6 +78,12 @@ export default function Profile() {
 
     fetchProfile();
   }, []);
+
+  useEffect(() => {
+    if (profile) {
+      setEditedName(profile.name);
+    }
+  }, [profile]);
 
   const handlePreferenceUpdate = async (
     key: string,
@@ -93,6 +120,32 @@ export default function Profile() {
     } catch (error) {
       console.error("Preference update error:", error);
       setError("Failed to update preferences");
+    }
+  };
+
+  const handleUpdateProfile = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) throw new Error("No token found");
+
+      const res = await fetch("/api/profile", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ name: editedName }),
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        setProfile((prev) => (prev ? { ...prev, name: editedName } : null));
+      } else {
+        setError(data.message);
+      }
+    } catch (error) {
+      console.error("Profile update error:", error);
+      setError("Failed to update profile");
     }
   };
 
@@ -223,7 +276,7 @@ export default function Profile() {
                       Tasks Completed
                     </h4>
                     <p className="text-2xl font-bold text-blue-600">
-                      {profile?.stats.tasksCompleted}
+                      {profile?.stats.completedSessions}
                     </p>
                   </div>
                   <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200">

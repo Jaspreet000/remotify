@@ -61,21 +61,6 @@ export default function FocusMode() {
     fetchPreferences();
   }, []);
 
-  // Timer logic
-  useEffect(() => {
-    let interval: NodeJS.Timeout;
-
-    if (isActive && timeLeft > 0) {
-      interval = setInterval(() => {
-        setTimeLeft((time) => time - 1);
-      }, 1000);
-    } else if (isActive && timeLeft === 0) {
-      handleSessionComplete();
-    }
-
-    return () => clearInterval(interval);
-  }, [isActive, timeLeft, handleSessionComplete]);
-
   const handleSessionComplete = useCallback(async () => {
     const newSessionsCompleted = session.sessionsCompleted + 1;
     setSession((prev) => ({
@@ -87,7 +72,6 @@ export default function FocusMode() {
       setIsBreak(false);
       setTimeLeft(session.duration);
     } else {
-      // Log completed focus session
       try {
         const token = localStorage.getItem("token");
         await fetch("/api/focus/sessions", {
@@ -111,6 +95,21 @@ export default function FocusMode() {
       }
     }
   }, [isBreak, session, blockedItems]);
+
+  // Timer logic
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+
+    if (isActive && timeLeft > 0) {
+      interval = setInterval(() => {
+        setTimeLeft((time) => time - 1);
+      }, 1000);
+    } else if (isActive && timeLeft === 0) {
+      handleSessionComplete();
+    }
+
+    return () => clearInterval(interval);
+  }, [isActive, timeLeft, handleSessionComplete]);
 
   const startSession = () => {
     setTimeLeft(session.duration);

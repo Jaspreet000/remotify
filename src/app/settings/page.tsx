@@ -91,23 +91,22 @@ export default function Settings() {
     }
   };
 
-  const handleFieldChange = (
-    field: FormField,
-    value: string | number | boolean
-  ) => {
+  const updateSettings = (field: FormField, value: any) => {
     if (!settings) return;
 
-    setSettings((prev) => {
-      if (!prev) return prev;
+    const newSettings: UserSettings = {
+      ...settings,
+      focus: { ...settings.focus },
+      notifications: { ...settings.notifications },
+      theme: { ...settings.theme },
+    };
 
-      const newSettings = { ...prev };
-      if (field.subsection) {
-        newSettings[field.section][field.subsection][field.id] = value;
-      } else {
-        newSettings[field.section][field.id] = value;
-      }
-      return newSettings;
-    });
+    if (field.subsection) {
+      (newSettings[field.section] as any)[field.subsection][field.id] = value;
+    } else {
+      (newSettings[field.section] as any)[field.id] = value;
+    }
+    setSettings(newSettings);
   };
 
   if (loading) return <LoadingSpinner />;
@@ -138,12 +137,13 @@ export default function Settings() {
                   type="number"
                   value={settings?.focus.defaultDuration || 25}
                   onChange={(e) =>
-                    handleFieldChange(
+                    updateSettings(
                       {
                         id: "defaultDuration",
                         label: "Default Duration",
                         type: "number",
                         section: "focus",
+                        value: settings?.focus.defaultDuration || 25,
                       },
                       parseInt(e.target.value)
                     )
