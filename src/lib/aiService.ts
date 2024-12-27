@@ -9,7 +9,7 @@ interface HuggingFacePayload {
   };
 }
 
-interface ProductivityData {
+export interface ProductivityData {
   sessions: {
     startTime: Date;
     duration: number;

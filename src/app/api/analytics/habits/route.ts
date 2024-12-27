@@ -2,8 +2,7 @@ import { NextResponse } from "next/server";
 import { dbConnect } from "@/lib/dbConnect";
 import User from "@/models/User";
 import { verifyToken } from "@/lib/auth";
-import { analyzeProductivityPatterns } from "@/lib/aiService";
-import type { ProductivityData } from "@/lib/aiService";
+import { analyzeProductivityPatterns, type ProductivityData } from "@/lib/aiService";
 
 interface WorkSession {
   startTime: Date;
