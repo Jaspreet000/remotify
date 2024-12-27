@@ -133,17 +133,27 @@ export async function GET(request: Request) {
   }
 }
 
-function calculateTeamMetrics(sessions: FocusSession[]): TeamMetrics {
-  const now = new Date();
-  const lastWeek = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-  const recentSessions = sessions.filter(s => new Date(s.startTime) >= lastWeek);
+function calculateTeamMetrics(sessions: any[]): {
+  averageProductivity: number;
+  collaborationScore: number;
+  participationRate: number;
+} {
+  if (!sessions.length) {
+    return {
+      averageProductivity: 0,
+      collaborationScore: 0,
+      participationRate: 0
+    };
+  }
+
+  const avgProductivity = sessions.reduce((acc, s) => acc + s.productivity, 0) / sessions.length;
+  const collaborationScore = sessions.reduce((acc, s) => acc + (s.participants.length > 1 ? 1 : 0), 0) / sessions.length * 100;
+  const participationRate = sessions.reduce((acc, s) => acc + s.participants.length, 0) / (sessions.length * team.members.length) * 100;
 
   return {
-    totalFocusHours: recentSessions.reduce((acc, s) => acc + s.duration / 60, 0),
-    averageProductivity: recentSessions.reduce((acc, s) => acc + s.focusScore, 0) / recentSessions.length || 0,
-    activeMembers: new Set(recentSessions.map(s => s.user._id)).size,
-    totalSessions: recentSessions.length,
-    weeklyParticipation: 0 // Calculate based on team size
+    averageProductivity: Math.round(avgProductivity),
+    collaborationScore: Math.round(collaborationScore),
+    participationRate: Math.round(participationRate)
   };
 }
 
