@@ -2,6 +2,7 @@ import bcrypt from 'bcryptjs';
 import { NextResponse } from 'next/server';
 import { dbConnect } from '@/lib/dbConnect';
 import User from '@/models/User';
+import mongoose from 'mongoose';
 
 export async function POST(request: Request) {
   try {
@@ -58,7 +59,12 @@ export async function POST(request: Request) {
         avatar: '',
         goals: [],
       },
-    });
+    }) as {
+      _id: mongoose.Types.ObjectId;
+      name: string;
+      email: string;
+      role: 'user' | 'admin';
+    };
 
     return NextResponse.json(
       {
