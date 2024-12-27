@@ -4,6 +4,7 @@ import { dbConnect } from '@/lib/dbConnect';
 import { generateToken } from '@/lib/auth';
 import User from '@/models/User';
 import type { UserDocument } from '@/models/User';
+import mongoose from 'mongoose';
 
 export async function POST(request: Request) {
   try {
@@ -18,7 +19,10 @@ export async function POST(request: Request) {
       );
     }
 
-    const user = await User.findOne({ email }).lean() as UserDocument & { _id: string };
+    const user = await User.findOne({ email }).lean() as UserDocument & { 
+      _id: mongoose.Types.ObjectId 
+    };
+    
     if (!user) {
       return NextResponse.json(
         { success: false, message: 'Invalid credentials' },
@@ -39,7 +43,7 @@ export async function POST(request: Request) {
 
     // Generate token
     const token = generateToken({
-      id: user._id,
+      id: user._id.toString(),
       email: user.email,
       role: user.role
     });
@@ -48,7 +52,7 @@ export async function POST(request: Request) {
       success: true,
       token,
       user: {
-        id: user._id,
+        id: user._id.toString(),
         name: user.name,
         email: user.email,
         role: user.role
