@@ -73,7 +73,7 @@ export async function GET(request: Request) {
       name: user.name,
       email: user.email,
       role: user.role,
-      avatar: user.profile?.avatar || null,
+      avatar: user.profile?.avatar,
       joinedAt: user.createdAt,
       stats: {
         totalFocusHours: user.focusStats?.totalFocusTime ? Math.round(user.focusStats.totalFocusTime / 60) : 0,
