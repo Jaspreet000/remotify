@@ -55,7 +55,7 @@ interface Achievement {
   unlockedAt: Date;
 }
 
-interface UserDocument extends mongoose.Document {
+export interface UserDocument extends mongoose.Document {
   email: string;
   password: string;
   name: string;

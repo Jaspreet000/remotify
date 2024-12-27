@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { dbConnect } from '@/lib/dbConnect';
 import { generateToken } from '@/lib/auth';
 import User from '@/models/User';
+import type { UserDocument } from '@/models/User';
 
 export async function POST(request: Request) {
   try {
@@ -17,7 +18,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ email }).lean() as UserDocument & { _id: string };
     if (!user) {
       return NextResponse.json(
         { success: false, message: 'Invalid credentials' },
@@ -34,12 +35,11 @@ export async function POST(request: Request) {
     }
 
     // Update last login
-    user.lastLogin = new Date();
-    await user.save();
+    await User.findByIdAndUpdate(user._id, { lastLogin: new Date() });
 
     // Generate token
     const token = generateToken({
-      id: user._id.toString(),
+      id: user._id,
       email: user.email,
       role: user.role
     });
