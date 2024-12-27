@@ -25,7 +25,7 @@ export async function POST(request: Request) {
       name: string;
       role: 'user' | 'admin';
       lastLogin: Date;
-      save(): Promise<any>;
+      save(): Promise<Document>;
     };
     if (!user) {
       return NextResponse.json(
