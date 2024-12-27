@@ -54,7 +54,16 @@ export async function GET(req: Request) {
           commonPatterns: []
         }
       },
-      preferences: user.preferences
+      preferences: {
+        workHours: {
+          start: user.preferences.focus?.defaultDuration?.toString() || "09:00",
+          end: user.preferences.focus?.breakDuration?.toString() || "17:00"
+        },
+        focusPreferences: {
+          duration: user.preferences.focus?.defaultDuration || 25,
+          breaks: user.preferences.focus?.breakDuration || 5
+        }
+      }
     };
 
     const insights = await analyzeProductivityPatterns(analysisData);
