@@ -5,13 +5,6 @@ import { verifyToken } from "@/lib/auth";
 import { analyzeProductivityPatterns } from "@/lib/aiService";
 import { JWTPayload } from '@/lib/auth';
 
-interface DecodedToken extends JWTPayload {
-  id: string;
-  email: string;
-  iat: number;
-  exp: number;
-}
-
 interface WorkSession {
   startTime: Date;
   duration: number;
