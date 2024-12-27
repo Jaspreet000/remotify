@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { dbConnect } from '@/lib/dbConnect';
 import { verifyToken } from '@/lib/auth';
 import User from '@/models/User';
+import mongoose from 'mongoose';
 
 interface DecodedToken {
   id: string;
@@ -47,7 +48,20 @@ export async function GET(request: Request) {
     const token = authHeader.split(' ')[1];
     const decoded = verifyToken(token) as DecodedToken;
 
-    const user = await User.findById(decoded.id).select('-password');
+    const user = await User.findById(decoded.id) as {
+      _id: mongoose.Types.ObjectId;
+      email: string;
+      name: string;
+      role: 'user' | 'admin';
+      createdAt: Date;
+      focusStats?: {
+        totalFocusTime: number;
+      };
+      profile?: {
+        avatar?: string;
+      };
+    };
+
     if (!user) {
       return NextResponse.json(
         { success: false, message: 'User not found' },
@@ -59,7 +73,7 @@ export async function GET(request: Request) {
       name: user.name,
       email: user.email,
       role: user.role,
-      avatar: user.profile?.avatar,
+      avatar: user.profile?.avatar || null,
       joinedAt: user.createdAt,
       stats: {
         totalFocusHours: user.focusStats?.totalFocusTime ? Math.round(user.focusStats.totalFocusTime / 60) : 0,
