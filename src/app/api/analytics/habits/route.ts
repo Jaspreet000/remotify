@@ -3,6 +3,7 @@ import { dbConnect } from "@/lib/dbConnect";
 import User from "@/models/User";
 import { verifyToken } from "@/lib/auth";
 import { analyzeProductivityPatterns } from "@/lib/aiService";
+import type { ProductivityData } from "@/lib/aiService";
 
 interface WorkSession {
   startTime: Date;
@@ -28,7 +29,7 @@ export async function GET(req: Request) {
     const userId = decoded.id;
 
     const user = await User.findById(userId)
-      .populate('workSessions')
+      .populate<{ workSessions: WorkSession[] }>('workSessions')
       .populate('habitAnalysis');
 
     if (!user) {
@@ -41,9 +42,19 @@ export async function GET(req: Request) {
     const recentSessions = user.workSessions.slice(-30);
     const habitAnalysis = user.getRecentHabitAnalysis(7);
 
-    const analysisData = {
-      sessions: recentSessions,
-      habits: habitAnalysis,
+    const analysisData: ProductivityData = {
+      sessions: recentSessions.map(session => ({
+        startTime: session.startTime,
+        duration: session.duration,
+        focusScore: session.focusScore,
+        distractions: session.distractions
+      })),
+      habits: {
+        summary: {
+          averageProductivity: habitAnalysis.reduce((acc, h) => acc + h.productivity, 0) / habitAnalysis.length,
+          commonPatterns: []
+        }
+      },
       preferences: user.preferences
     };
 
@@ -55,7 +66,7 @@ export async function GET(req: Request) {
       aiInsights: insights,
       summary: {
         ...productivityMetrics,
-        ...habitAnalysis.summary
+        ...habitAnalysis[0]?.summary || {}
       }
     };
 
