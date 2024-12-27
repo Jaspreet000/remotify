@@ -3,7 +3,6 @@ import { NextResponse } from 'next/server';
 import { dbConnect } from '@/lib/dbConnect';
 import { generateToken } from '@/lib/auth';
 import User from '@/models/User';
-import type { UserDocument } from '@/models/User';
 import mongoose from 'mongoose';
 
 export async function POST(request: Request) {
@@ -19,7 +18,15 @@ export async function POST(request: Request) {
       );
     }
 
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ email }) as {
+      _id: mongoose.Types.ObjectId;
+      email: string;
+      password: string;
+      name: string;
+      role: 'user' | 'admin';
+      lastLogin: Date;
+      save(): Promise<any>;
+    };
     if (!user) {
       return NextResponse.json(
         { success: false, message: 'Invalid credentials' },
