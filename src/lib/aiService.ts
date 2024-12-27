@@ -51,17 +51,22 @@ interface UserPreferences {
   };
 }
 
-interface TeamData {
-  members: {
-    id: string;
-    productivity: number;
-    focusHours: number;
-  }[];
+export interface TeamData {
+  metrics: {
+    averageProductivity: number;
+    collaborationScore: number;
+    participationRate: number;
+  };
   sessions: {
     date: Date;
     duration: number;
     participants: string[];
     productivity: number;
+  }[];
+  members: {
+    id: string;
+    productivity: number;
+    focusHours: number;
   }[];
 }
 
