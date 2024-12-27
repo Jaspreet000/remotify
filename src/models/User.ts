@@ -129,7 +129,10 @@ export interface UserDocument extends mongoose.Document {
       syncFrequency: 'realtime' | 'hourly' | 'daily';
     };
   };
-  workSessions: mongoose.Types.ObjectId[];
+  workSessions: mongoose.Types.ObjectId[] | Array<{
+    focusScore: number;
+    startTime: Date;
+  }>;
   teams: mongoose.Types.ObjectId[];
   habitAnalysis: HabitAnalysis[];
   getRecentHabitAnalysis(days: number): HabitAnalysis[];

@@ -4,6 +4,7 @@ import Challenge from '@/models/Challenge';
 import User from '@/models/User';
 import { verifyToken } from '@/lib/auth';
 import { generatePersonalizedChallenges } from '@/lib/aiService';
+import type { UserDocument } from '@/models/User';
 
 interface DecodedToken {
   id: string;
@@ -146,7 +147,7 @@ export async function POST(request: Request) {
   }
 }
 
-function calculateUserLevel(user: any): number {
+function calculateUserLevel(user: UserDocument): number {
   const baseXP = 1000;
   const experience = user.experience || 0;
   return Math.floor(Math.log(experience / baseXP + 1) / Math.log(1.5)) + 1;

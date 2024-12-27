@@ -33,6 +33,18 @@ interface FormField {
   value: number | string | boolean;
 }
 
+type SettingsValue = string | number | boolean;
+
+type SettingsSection = {
+  [key: string]: SettingsValue | Record<string, SettingsValue>;
+};
+
+interface SettingsObject {
+  [section: string]: {
+    [key: string]: SettingsValue | Record<string, SettingsValue>;
+  };
+}
+
 export default function Settings() {
   const [settings, setSettings] = useState<UserSettings | null>(null);
   const [loading, setLoading] = useState(true);
@@ -91,21 +103,24 @@ export default function Settings() {
     }
   };
 
-  const updateSettings = (field: FormField, value: any) => {
+  const updateSettings = (field: FormField, value: SettingsValue) => {
     if (!settings) return;
 
-    const newSettings: UserSettings = {
+    const newSettings = {
       ...settings,
-      focus: { ...settings.focus },
-      notifications: { ...settings.notifications },
-      theme: { ...settings.theme },
-    };
+      [field.section]: {
+        ...(settings[field.section] as Record<string, any>),
+        ...(field.subsection
+          ? {
+              [field.subsection]: {
+                ...(settings[field.section] as any)[field.subsection],
+                [field.id]: value,
+              },
+            }
+          : { [field.id]: value }),
+      },
+    } as UserSettings;
 
-    if (field.subsection) {
-      (newSettings[field.section] as any)[field.subsection][field.id] = value;
-    } else {
-      (newSettings[field.section] as any)[field.id] = value;
-    }
     setSettings(newSettings);
   };
 

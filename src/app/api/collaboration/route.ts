@@ -1,87 +1,59 @@
 import { NextResponse } from "next/server";
 import { dbConnect } from "@/lib/dbConnect";
-import Collaboration from "@/models/Collaboration";
 import { verifyToken } from "@/lib/auth";
-import mongoose from "mongoose";
+import Team from "@/models/Team";
 
 interface DecodedToken {
   id: string;
   email: string;
   role: string;
-  iat: number;
-  exp: number;
 }
 
-interface CollaborationData {
-  teamId: mongoose.Types.ObjectId;
-  activity: {
-    date: Date;
-    type: 'meeting' | 'task' | 'focus-session' | 'code-review' | 'pair-programming';
-    duration: number;
-    participants: { userId: mongoose.Types.ObjectId; contribution: number; }[];
-    platform: 'slack' | 'google-meet' | 'zoom' | 'in-person' | 'other';
-    metadata: { [key: string]: any };
-  }[];
+interface CollaborationSession {
+  teamId: string;
+  startTime: Date;
+  duration: number;
+  participants: string[];
+  notes: string;
 }
 
-// GET: Fetch collaboration insights
-export async function GET(request: Request) {
-  try {
-    await dbConnect();
-
-    const authHeader = request.headers.get("Authorization");
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
-    }
-
-    const token = authHeader.split(" ")[1];
-    const decoded = verifyToken(token) as DecodedToken;
-
-    const collaborationData = await Collaboration.find({ user: decoded.id }).lean() as CollaborationData[];
-
-    return NextResponse.json({ success: true, data: collaborationData });
-  } catch (error) {
-    console.error("Error fetching collaboration data:", error);
-    return NextResponse.json({ success: false, message: "Server error" }, { status: 500 });
-  }
-}
-
-// POST: Add new collaboration data
 export async function POST(request: Request) {
   try {
     await dbConnect();
 
     const authHeader = request.headers.get("Authorization");
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
+    if (!authHeader?.startsWith("Bearer ")) {
+      return NextResponse.json(
+        { success: false, message: "Unauthorized" },
+        { status: 401 }
+      );
     }
 
     const token = authHeader.split(" ")[1];
-    const decoded = verifyToken(token) as DecodedToken;
+    const { id } = verifyToken(token) as DecodedToken;
 
-    const { team, activity } = await request.json();
+    const sessionData: CollaborationSession = await request.json();
+    const team = await Team.findById(sessionData.teamId);
 
-    if (!team || !activity) {
-      return NextResponse.json({ success: false, message: "Invalid input data" }, { status: 400 });
+    if (!team) {
+      return NextResponse.json(
+        { success: false, message: "Team not found" },
+        { status: 404 }
+      );
     }
 
-    const newCollaboration: CollaborationData = {
-      teamId: new mongoose.Types.ObjectId(team),
-      activity: [{
-        date: new Date(),
-        type: activity.type,
-        duration: activity.duration,
-        participants: activity.participants,
-        platform: activity.platform,
-        metadata: activity.metadata
-      }]
-    };
+    team.sessions.push({
+      ...sessionData,
+      userId: id
+    });
 
-    const savedCollaboration = await Collaboration.create(newCollaboration);
-
-    return NextResponse.json({ success: true, data: savedCollaboration });
+    await team.save();
+    return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Error adding collaboration data:", error);
-    return NextResponse.json({ success: false, message: "Server error" }, { status: 500 });
+    console.error("Collaboration API Error:", error);
+    return NextResponse.json(
+      { success: false, message: "Internal server error" },
+      { status: 500 }
+    );
   }
 }
