@@ -61,10 +61,15 @@ export async function POST(request: Request) {
     });
 
     return NextResponse.json(
-      { 
+      {
         success: true, 
         message: 'Registration successful',
-        user: user.toSafeObject(),
+        user: {
+          id: user._id.toString(),
+          name: user.name,
+          email: user.email,
+          role: user.role
+        }
       },
       { status: 201 }
     );
