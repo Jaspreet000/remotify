@@ -19,10 +19,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const user = await User.findOne({ email }).lean() as UserDocument & { 
-      _id: mongoose.Types.ObjectId 
-    };
-    
+    const user = await User.findOne({ email });
     if (!user) {
       return NextResponse.json(
         { success: false, message: 'Invalid credentials' },
@@ -39,7 +36,8 @@ export async function POST(request: Request) {
     }
 
     // Update last login
-    await User.findByIdAndUpdate(user._id, { lastLogin: new Date() });
+    user.lastLogin = new Date();
+    await user.save();
 
     // Generate token
     const token = generateToken({
