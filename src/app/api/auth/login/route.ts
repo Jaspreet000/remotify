@@ -37,25 +37,27 @@ export async function POST(request: Request) {
     user.lastLogin = new Date();
     await user.save();
 
-    // Generate token with more user info
+    // Generate token
     const token = generateToken({
-      id: user._id,
+      id: user._id.toString(),
       email: user.email,
-      role: user.role,
+      role: user.role
     });
 
-    return NextResponse.json(
-      {
-        success: true,
-        token,
-        user: user.toSafeObject(),
-      },
-      { status: 200 }
-    );
+    return NextResponse.json({
+      success: true,
+      token,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role
+      }
+    });
   } catch (error) {
     console.error('Login error:', error);
     return NextResponse.json(
-      { success: false, message: 'Server error' },
+      { success: false, message: 'Internal server error' },
       { status: 500 }
     );
   }

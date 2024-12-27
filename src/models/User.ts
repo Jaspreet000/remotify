@@ -60,6 +60,7 @@ interface UserDocument extends mongoose.Document {
   password: string;
   name: string;
   role: 'user' | 'admin';
+  lastLogin: Date;
   preferences: {
     focus: {
       defaultDuration: number;
@@ -216,6 +217,7 @@ const UserSchema = new mongoose.Schema(
     name: { type: String, required: true },
     email: { type: String, required: true, unique: true },
     password: { type: String, required: true },
+    lastLogin: { type: Date },
     preferences: {
       dailyFocusHours: { type: Number, default: 8 },
       notifications: { type: Boolean, default: true },
@@ -262,7 +264,6 @@ const UserSchema = new mongoose.Schema(
       }]
     },
     role: { type: String, enum: ['user', 'admin'], default: 'user' },
-    lastLogin: { type: Date },
     isActive: { type: Boolean, default: true },
     focusStats: {
       totalSessions: { type: Number, default: 0 },
