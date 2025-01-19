@@ -25,7 +25,7 @@ export async function GET(req: Request) {
 
     const token = authHeader.split(' ')[1];
     const user = await verifyToken(req);
-    if (!user) {
+    if (!user || !user.id) {
       return NextResponse.json(
         { success: false, message: "Unauthorized" },
         { status: 401 }

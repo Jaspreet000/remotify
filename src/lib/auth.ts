@@ -23,12 +23,22 @@ export const authOptions: NextAuthOptions = {
   },
 };
 
-export async function verifyToken(req: Request) {
+interface SessionUser {
+  id?: string;
+  name?: string | null;
+  email?: string | null;
+  image?: string | null;
+}
+
+export async function verifyToken(req: Request): Promise<SessionUser | null> {
   const session = await getServerSession(authOptions);
   if (!session?.user?.email) {
     return null;
   }
-  return session.user;
+  return {
+    ...session.user,
+    id: session.user.id || undefined
+  };
 }
 
 export async function getCurrentUser() {
