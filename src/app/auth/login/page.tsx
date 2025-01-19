@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import LoadingSpinner from "@/components/LoadingSpinner";
+import { signIn } from "next-auth/react";
 
 export default function Login() {
   const [formData, setFormData] = useState({
@@ -26,23 +27,26 @@ export default function Login() {
 
     setLoading(true);
     try {
-      const res = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
+      const result = await signIn("credentials", {
+        email: formData.email,
+        password: formData.password,
+        redirect: false,
       });
 
-      const data = await res.json();
-      if (data.success) {
-        localStorage.setItem("token", data.token);
-        localStorage.setItem("userRole", data.user.role);
-        router.push("/dashboard");
+      if (result?.error) {
+        setError(
+          result.error === "CredentialsSignin"
+            ? "Invalid email or password"
+            : result.error
+        );
       } else {
-        setError(data.message || "Invalid email or password");
+        router.push("/dashboard");
+        router.refresh();
       }
     } catch (error) {
       console.error("Login error:", error);
       setError("Failed to log in. Please try again.");
+    } finally {
       setLoading(false);
     }
   };

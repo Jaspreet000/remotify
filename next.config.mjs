@@ -1,4 +1,13 @@
 /** @type {import('next').NextConfig} */
-const nextConfig = {};
+const nextConfig = {
+  reactStrictMode: true,
+  swcMinify: true,
+  images: {
+    domains: ["lh3.googleusercontent.com"],
+  },
+  experimental: {
+    optimizeCss: true,
+  },
+};
 
 export default nextConfig;

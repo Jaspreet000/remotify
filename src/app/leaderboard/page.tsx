@@ -1,230 +1,310 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Image from "next/image";
+import { motion } from "framer-motion";
+import { useSession } from "next-auth/react";
+import {
+  Trophy,
+  Medal,
+  Crown,
+  Star,
+  TrendingUp,
+  Users,
+  Award,
+  Target,
+  Clock,
+  Activity,
+} from "lucide-react";
 import LoadingSpinner from "@/components/LoadingSpinner";
 
 interface LeaderboardEntry {
-  _id: string;
-  user: {
-    name: string;
-    avatar?: string;
-  };
-  focusHours: number;
-  tasksCompleted: number;
-  level: number;
-  badges: string[];
-  weeklyStreak: number;
+  userId: string;
+  name: string;
+  avatar: string;
   score: number;
+  rank: number;
+  badges: string[];
+  recentAchievements: string[];
+  performanceInsights: {
+    strengths: string[];
+    improvements: string[];
+    consistency: number;
+    trend: "rising" | "stable" | "declining";
+  };
+  focusMetrics: {
+    totalFocusTime: number;
+    averageSessionScore: number;
+    weeklyImprovement: number;
+    consistencyScore: number;
+    collaborationScore: number;
+  };
+  specializations: string[];
+  level: number;
+  experience: number;
 }
 
-export default function Leaderboard() {
-  const [leaderboardData, setLeaderboardData] = useState<LeaderboardEntry[]>(
-    []
-  );
+interface LeaderboardData {
+  topPerformers: LeaderboardEntry[];
+  userRank: LeaderboardEntry;
+  nearbyUsers: LeaderboardEntry[];
+  globalStats: {
+    totalUsers: number;
+    averageScore: number;
+    topSpecializations: { name: string; count: number }[];
+    mostActiveTime: string;
+    competitionInsights: string[];
+  };
+  weeklyHighlights: {
+    mostImproved: { name: string; improvement: number }[];
+    longestStreak: { name: string; days: number }[];
+    bestCollaborators: { name: string; score: number }[];
+  };
+}
+
+export default function LeaderboardPage() {
+  const { data: session } = useSession();
+  const [leaderboardData, setLeaderboardData] =
+    useState<LeaderboardData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [timeframe, setTimeframe] = useState<"daily" | "weekly" | "monthly">(
-    "weekly"
-  );
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchLeaderboard = async () => {
+    const fetchLeaderboardData = async () => {
       try {
-        const token = localStorage.getItem("token");
-        if (!token) throw new Error("Authentication required");
+        const response = await fetch("/api/leaderboard");
+        const result = await response.json();
 
-        const res = await fetch(`/api/leaderboard?timeframe=${timeframe}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        const result = await res.json();
-
-        if (result.success) {
-          setLeaderboardData(result.data);
-        } else {
-          setError(result.message);
+        if (!result.success) {
+          throw new Error(result.message || "Failed to fetch leaderboard data");
         }
-      } catch (error) {
-        console.error("Leaderboard fetch error:", error);
-        setError("Failed to load leaderboard data");
+
+        setLeaderboardData(result.data);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "An error occurred");
       } finally {
         setLoading(false);
       }
     };
 
-    fetchLeaderboard();
-  }, [timeframe]);
+    if (session) {
+      fetchLeaderboardData();
+    }
+  }, [session]);
 
-  if (loading) return <LoadingSpinner />;
+  if (!session) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <p className="text-lg text-gray-600">
+          Please sign in to view the leaderboard.
+        </p>
+      </div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <LoadingSpinner />
+      </div>
+    );
+  }
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50 px-4 py-12">
-        <div className="max-w-7xl mx-auto">
-          <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-md">
-            <p className="text-red-700">{error}</p>
-          </div>
-        </div>
+      <div className="flex items-center justify-center min-h-screen">
+        <p className="text-red-500">{error}</p>
+      </div>
+    );
+  }
+
+  if (!leaderboardData) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <p className="text-gray-600">No leaderboard data available.</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 px-4 py-12">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="bg-white rounded-xl shadow-lg overflow-hidden mb-8">
-          <div className="px-6 py-4 bg-gradient-to-r from-yellow-600 to-orange-600">
-            <h1 className="text-2xl font-bold text-white">
-              Productivity Leaderboard
-            </h1>
-            <p className="text-yellow-100 mt-1">
-              Top performers and achievements
+    <div className="container mx-auto px-4 py-8">
+      {/* User's Current Rank */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg p-6 mb-8 text-white shadow-lg"
+      >
+        <h2 className="text-2xl font-bold mb-4">Your Performance</h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div>
+            <p className="text-lg opacity-80">Current Rank</p>
+            <p className="text-4xl font-bold">
+              #{leaderboardData.userRank.rank}
             </p>
           </div>
-
-          {/* Timeframe Selection */}
-          <div className="p-4 border-b">
-            <div className="flex justify-center space-x-4">
-              {(["daily", "weekly", "monthly"] as const).map((t) => (
-                <button
-                  key={t}
-                  onClick={() => setTimeframe(t)}
-                  className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                    timeframe === t
-                      ? "bg-yellow-100 text-yellow-800"
-                      : "text-gray-600 hover:bg-gray-100"
-                  }`}
-                >
-                  {t.charAt(0).toUpperCase() + t.slice(1)}
-                </button>
-              ))}
-            </div>
+          <div>
+            <p className="text-lg opacity-80">Level</p>
+            <p className="text-4xl font-bold">
+              {leaderboardData.userRank.level}
+            </p>
+          </div>
+          <div>
+            <p className="text-lg opacity-80">Score</p>
+            <p className="text-4xl font-bold">
+              {leaderboardData.userRank.score}
+            </p>
           </div>
         </div>
+      </motion.div>
 
-        {/* Leaderboard Table */}
-        {leaderboardData.length > 0 && (
-          <div className="bg-white rounded-xl shadow-lg overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Rank
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      User
-                    </th>
-                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Focus Hours
-                    </th>
-                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Tasks
-                    </th>
-                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Level
-                    </th>
-                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Streak
-                    </th>
-                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Score
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {leaderboardData.map((entry, index) => (
-                    <tr
-                      key={entry._id}
-                      className={`${
-                        index % 2 === 0 ? "bg-white" : "bg-gray-50"
-                      } hover:bg-gray-100 transition-colors`}
-                    >
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div
-                          className={`text-lg font-bold ${
-                            index === 0
-                              ? "text-yellow-500"
-                              : index === 1
-                              ? "text-gray-400"
-                              : index === 2
-                              ? "text-yellow-700"
-                              : "text-gray-600"
-                          }`}
-                        >
-                          {index + 1}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <div className="flex-shrink-0 h-10 w-10 relative">
-                            {entry.user.avatar ? (
-                              <Image
-                                src={entry.user.avatar}
-                                alt={`${entry.user.name}'s avatar`}
-                                fill
-                                className="rounded-full"
-                                sizes="40px"
-                              />
-                            ) : (
-                              <div className="h-10 w-10 rounded-full bg-gradient-to-br from-yellow-400 to-orange-500 flex items-center justify-center">
-                                <span className="text-white font-bold">
-                                  {entry.user.name.charAt(0)}
-                                </span>
-                              </div>
-                            )}
-                          </div>
-                          <div className="ml-4">
-                            <div className="text-sm font-medium text-gray-900">
-                              {entry.user.name}
-                            </div>
-                            <div className="flex space-x-1">
-                              {entry.badges.map((badge, i) => (
-                                <span
-                                  key={i}
-                                  className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800"
-                                >
-                                  {badge}
-                                </span>
-                              ))}
-                            </div>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-center">
-                        <span className="text-sm text-gray-900">
-                          {entry.focusHours}h
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-center">
-                        <span className="text-sm text-gray-900">
-                          {entry.tasksCompleted}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-center">
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                          Level {entry.level}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-center">
-                        <span className="text-sm text-gray-900">
-                          {entry.weeklyStreak} days
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-center">
-                        <span className="text-sm font-medium text-gray-900">
-                          {entry.score}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+      {/* Top Performers */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+        <motion.div
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-lg"
+        >
+          <h2 className="text-xl font-bold mb-4 flex items-center">
+            <Trophy className="w-6 h-6 mr-2 text-yellow-500" />
+            Top Performers
+          </h2>
+          <div className="space-y-4">
+            {leaderboardData.topPerformers.slice(0, 5).map((user, index) => (
+              <div
+                key={user.userId}
+                className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg"
+              >
+                <div className="flex items-center">
+                  <span className="w-8 text-lg font-bold">#{index + 1}</span>
+                  <img
+                    src={user.avatar || "/default-avatar.png"}
+                    alt={user.name}
+                    className="w-10 h-10 rounded-full mr-3"
+                  />
+                  <div>
+                    <p className="font-semibold">{user.name}</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      Level {user.level}
+                    </p>
+                  </div>
+                </div>
+                <p className="font-bold">{user.score}</p>
+              </div>
+            ))}
+          </div>
+        </motion.div>
+
+        {/* Weekly Highlights */}
+        <motion.div
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-lg"
+        >
+          <h2 className="text-xl font-bold mb-4 flex items-center">
+            <Star className="w-6 h-6 mr-2 text-yellow-500" />
+            Weekly Highlights
+          </h2>
+          <div className="space-y-6">
+            <div>
+              <h3 className="text-lg font-semibold mb-2 flex items-center">
+                <TrendingUp className="w-5 h-5 mr-2 text-green-500" />
+                Most Improved
+              </h3>
+              <div className="space-y-2">
+                {leaderboardData.weeklyHighlights.mostImproved.map((user) => (
+                  <div
+                    key={user.name}
+                    className="flex justify-between items-center"
+                  >
+                    <span>{user.name}</span>
+                    <span className="text-green-500">+{user.improvement}%</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold mb-2 flex items-center">
+                <Activity className="w-5 h-5 mr-2 text-blue-500" />
+                Longest Streaks
+              </h3>
+              <div className="space-y-2">
+                {leaderboardData.weeklyHighlights.longestStreak.map((user) => (
+                  <div
+                    key={user.name}
+                    className="flex justify-between items-center"
+                  >
+                    <span>{user.name}</span>
+                    <span>{user.days} days</span>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
-        )}
+        </motion.div>
       </div>
+
+      {/* Global Stats */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-lg mb-8"
+      >
+        <h2 className="text-xl font-bold mb-4 flex items-center">
+          <Target className="w-6 h-6 mr-2 text-blue-500" />
+          Global Statistics
+        </h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div>
+            <p className="text-gray-500 dark:text-gray-400">Total Users</p>
+            <p className="text-2xl font-bold">
+              {leaderboardData.globalStats.totalUsers}
+            </p>
+          </div>
+          <div>
+            <p className="text-gray-500 dark:text-gray-400">Average Score</p>
+            <p className="text-2xl font-bold">
+              {Math.round(leaderboardData.globalStats.averageScore)}
+            </p>
+          </div>
+          <div>
+            <p className="text-gray-500 dark:text-gray-400">Most Active Time</p>
+            <p className="text-2xl font-bold">
+              {leaderboardData.globalStats.mostActiveTime}
+            </p>
+          </div>
+          <div>
+            <p className="text-gray-500 dark:text-gray-400">
+              Top Specialization
+            </p>
+            <p className="text-2xl font-bold">
+              {leaderboardData.globalStats.topSpecializations[0]?.name}
+            </p>
+          </div>
+        </div>
+      </motion.div>
+
+      {/* Competition Insights */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-lg"
+      >
+        <h2 className="text-xl font-bold mb-4 flex items-center">
+          <Crown className="w-6 h-6 mr-2 text-yellow-500" />
+          Competition Insights
+        </h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {leaderboardData.globalStats.competitionInsights.map(
+            (insight, index) => (
+              <div
+                key={index}
+                className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg"
+              >
+                <p>{insight}</p>
+              </div>
+            )
+          )}
+        </div>
+      </motion.div>
     </div>
   );
 }

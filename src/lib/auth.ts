@@ -1,36 +1,36 @@
-import jwt from 'jsonwebtoken';
-import { NextRequest } from 'next/server';
+import { NextAuthOptions } from "next-auth";
+import GoogleProvider from "next-auth/providers/google";
+import { getServerSession } from "next-auth/next";
 
-const JWT_SECRET = process.env.JWT_SECRET || 'default_secret_key';
+export const authOptions: NextAuthOptions = {
+  providers: [
+    GoogleProvider({
+      clientId: process.env.GOOGLE_CLIENT_ID!,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+    }),
+  ],
+  session: {
+    strategy: "jwt",
+  },
+  callbacks: {
+    async session({ session, token }) {
+      if (session.user) {
+        session.user.id = token.sub;
+      }
+      return session;
+    },
+  },
+};
 
-export interface JWTPayload {
-  id: string;
-  email: string;
-  role: string;
-  iat?: number;
-  exp?: number;
-}
-
-export function generateToken(payload: JWTPayload, expiresIn = '24h') {
-  return jwt.sign(payload, JWT_SECRET, { expiresIn });
-}
-
-export function verifyToken(token: string): JWTPayload {
-  try {
-    return jwt.verify(token, JWT_SECRET) as JWTPayload;
-  } catch (error: unknown) {
-    console.error('Token verification failed:', error);
-    throw new Error('Invalid token');
+export async function verifyToken(req: Request) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.email) {
+    return null;
   }
+  return session.user;
 }
 
-export async function getAuthUser(request: NextRequest) {
-  const token = request.headers.get('authorization')?.replace('Bearer ', '');
-  if (!token) throw new Error('No token provided');
-  
-  return verifyToken(token);
-}
-
-export function isAdmin(user: JWTPayload): boolean {
-  return user.role === 'admin';
+export async function getCurrentUser() {
+  const session = await getServerSession(authOptions);
+  return session?.user;
 }

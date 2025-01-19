@@ -1,184 +1,128 @@
-import mongoose from 'mongoose';
-import { generateFocusSuggestions } from '@/lib/aiService';
+import { Schema, model, Document, models } from 'mongoose';
 
-const DistractionSchema = new mongoose.Schema({
-  type: {
-    type: String,
-    enum: ['website', 'app', 'notification', 'other'],
-    required: true
-  },
-  timestamp: { type: Date, default: Date.now },
-  details: String
-});
+export interface IFocusSession extends Document {
+  userId: Schema.Types.ObjectId;
+  startTime: Date;
+  endTime?: Date;
+  duration: number;
+  type: 'focus' | 'break';
+  status: 'active' | 'completed' | 'interrupted';
+  focusScore: number;
+  distractions: Array<{
+    timestamp: Date;
+    type: string;
+    duration: number;
+    recoveryTime: number;
+    postRecoveryScore: number;
+  }>;
+  breaks: Array<{
+    startTime: Date;
+    duration: number;
+    type: 'short' | 'long';
+    effectivenessScore: number;
+  }>;
+  tasks: Array<{
+    description: string;
+    completed: boolean;
+    completedAt?: Date;
+  }>;
+  notes: string;
+  environment: {
+    location: string;
+    noiseLevel: 'quiet' | 'moderate' | 'noisy';
+    deviceType: 'desktop' | 'mobile' | 'tablet';
+  };
+  metrics: {
+    keystrokes: number;
+    mouseClicks: number;
+    screenTime: number;
+    tabSwitches: number;
+    focusTimePercentage: number;
+  };
+}
 
-const FocusSessionSchema = new mongoose.Schema({
-  user: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: true
-  },
-  startTime: { type: Date, default: Date.now },
+const focusSessionSchema = new Schema<IFocusSession>({
+  userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+  startTime: { type: Date, required: true },
   endTime: Date,
   duration: { type: Number, required: true }, // in minutes
-  isCompleted: { type: Boolean, default: false },
-  focusScore: { type: Number, min: 0, max: 100 },
-  blockedItems: [{
-    type: { type: String, enum: ['website', 'app'] },
-    name: String
+  type: { type: String, enum: ['focus', 'break'], required: true },
+  status: { 
+    type: String, 
+    enum: ['active', 'completed', 'interrupted'],
+    default: 'active'
+  },
+  focusScore: { 
+    type: Number,
+    min: 0,
+    max: 100,
+    default: 100
+  },
+  distractions: [{
+    timestamp: { type: Date, required: true },
+    type: { type: String, required: true },
+    duration: { type: Number, required: true }, // in seconds
+    recoveryTime: { type: Number, required: true }, // in seconds
+    postRecoveryScore: { type: Number, required: true }
   }],
-  distractions: [DistractionSchema],
   breaks: [{
-    startTime: Date,
-    endTime: Date,
-    duration: Number, // in minutes
-    type: { type: String, enum: ['planned', 'unplanned'] }
+    startTime: { type: Date, required: true },
+    duration: { type: Number, required: true }, // in minutes
+    type: { type: String, enum: ['short', 'long'], required: true },
+    effectivenessScore: { type: Number, min: 0, max: 100 }
   }],
-  notes: String,
-  mood: {
-    before: { type: Number, min: 1, max: 5 },
-    after: { type: Number, min: 1, max: 5 }
-  },
-  aiSuggestions: [{
-    type: String,
-    timestamp: Date,
-    category: {
-      type: String,
-      enum: ['break', 'focus', 'environment', 'habit']
-    },
-    priority: {
-      type: Number,
-      min: 1,
-      max: 5
-    }
+  tasks: [{
+    description: { type: String, required: true },
+    completed: { type: Boolean, default: false },
+    completedAt: Date
   }],
+  notes: { type: String, default: '' },
   environment: {
-    noise: {
-      type: String,
-      enum: ['quiet', 'moderate', 'loud']
+    location: { type: String, default: 'unknown' },
+    noiseLevel: { 
+      type: String, 
+      enum: ['quiet', 'moderate', 'noisy'],
+      default: 'moderate'
     },
-    lighting: {
-      type: String,
-      enum: ['dark', 'dim', 'bright']
-    },
-    temperature: Number
-  },
-  productivity: {
-    energyLevel: {
-      type: Number,
-      min: 1,
-      max: 5
-    },
-    stressLevel: {
-      type: Number,
-      min: 1,
-      max: 5
-    },
-    satisfaction: {
-      type: Number,
-      min: 1,
-      max: 5
+    deviceType: { 
+      type: String, 
+      enum: ['desktop', 'mobile', 'tablet'],
+      default: 'desktop'
     }
+  },
+  metrics: {
+    keystrokes: { type: Number, default: 0 },
+    mouseClicks: { type: Number, default: 0 },
+    screenTime: { type: Number, default: 0 }, // in seconds
+    tabSwitches: { type: Number, default: 0 },
+    focusTimePercentage: { type: Number, default: 100 }
   }
 }, {
   timestamps: true
 });
 
-// Calculate focus score before saving
-FocusSessionSchema.pre('save', async function(next) {
-  if (this.isCompleted && !this.focusScore) {
-    if (!this.endTime || !this.startTime) return 0;
-
-    const plannedDuration = this.duration * 60 * 1000;
-    const actualDuration = this.endTime.getTime() - this.startTime.getTime();
-    
-    // Calculate base score
-    let score = 100;
-    
-    // Time management factor
-    const durationDiff = Math.abs(plannedDuration - actualDuration) / plannedDuration;
-    score -= durationDiff * 20;
-    
-    // Distraction impact
-    const distractionImpact = this.distractions.reduce((acc, d) => {
-      // Weight different types of distractions differently
-      const weights = {
-        'notification': 2,
-        'website': 3,
-        'app': 3,
-        'other': 1
-      };
-      return acc + (weights[d.type] || 1);
-    }, 0);
-    score -= distractionImpact * 5;
-    
-    // Break efficiency
-    const breakEfficiency = this.breaks.reduce((acc, b) => {
-      return acc + (b.type === 'planned' ? 1 : -1);
-    }, 0);
-    score += breakEfficiency * 2;
-    
-    // Environmental factors
-    if (this.environment) {
-      const optimalConditions = {
-        noise: 'quiet',
-        lighting: 'bright'
-      };
-      if (this.environment.noise === optimalConditions.noise) score += 5;
-      if (this.environment.lighting === optimalConditions.lighting) score += 5;
-    }
-    
-    // Ensure score stays within bounds
-    this.focusScore = Math.max(0, Math.min(100, Math.round(score)));
+// Pre-save hook to calculate focus score based on distractions and metrics
+focusSessionSchema.pre('save', function(next) {
+  if (this.isModified('distractions') || this.isModified('metrics')) {
+    const distractionImpact = this.distractions.length * 5;
+    const metricsScore = calculateMetricsScore(this.metrics);
+    this.focusScore = Math.max(0, Math.min(100, 100 - distractionImpact + metricsScore));
   }
   next();
 });
 
-// Method to get session statistics
-FocusSessionSchema.methods.getStats = function() {
-  return {
-    totalDuration: this.duration,
-    actualDuration: this.endTime ? 
-      Math.round((this.endTime.getTime() - this.startTime.getTime()) / (60 * 1000)) : 
-      null,
-    distractionCount: this.distractions.length,
-    breakCount: this.breaks.length,
-    focusScore: this.focusScore,
-    productivity: {
-      score: this.focusScore,
-      factors: {
-        distractions: this.distractions.length,
-        breaks: this.breaks.length,
-        completion: this.isCompleted
-      }
-    }
-  };
-};
+function calculateMetricsScore(metrics: IFocusSession['metrics']): number {
+  const focusBonus = metrics.focusTimePercentage >= 90 ? 10 : 0;
+  const productivityScore = Math.min(
+    10,
+    (metrics.keystrokes + metrics.mouseClicks) / 1000
+  );
+  return focusBonus + productivityScore;
+}
 
-// Add AI-powered methods
-FocusSessionSchema.methods.getPersonalizedSuggestions = async function() {
-  const suggestions = await generateFocusSuggestions({
-    focus: {
-      defaultDuration: this.duration,
-      breakDuration: this.breaks.length,
-      sessionsBeforeLongBreak: 4,
-      blockedSites: [],
-      blockedApps: []
-    },
-    notifications: {
-      enabled: true,
-      breakReminders: true,
-      progressUpdates: true,
-      teamActivity: true
-    },
-    theme: {
-      mode: 'light',
-      color: 'blue'
-    }
-  });
-  
-  this.aiSuggestions.push(...suggestions);
-  await this.save();
-  return suggestions;
-};
+// Indexes for better query performance
+focusSessionSchema.index({ userId: 1, startTime: -1 });
+focusSessionSchema.index({ status: 1 });
+focusSessionSchema.index({ 'tasks.completed': 1 });
 
-export default mongoose.models.FocusSession || mongoose.model('FocusSession', FocusSessionSchema);
+export default models.FocusSession || model<IFocusSession>('FocusSession', focusSessionSchema);

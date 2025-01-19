@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import LoadingSpinner from "@/components/LoadingSpinner";
+import { signIn } from "next-auth/react";
 
 interface RegisterFormData {
   name: string;
@@ -70,6 +71,7 @@ export default function Register() {
 
     setLoading(true);
     try {
+      // First register the user
       const res = await fetch("/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -78,15 +80,26 @@ export default function Register() {
 
       const data = await res.json();
       if (data.success) {
-        localStorage.setItem("token", data.token);
-        localStorage.setItem("userRole", data.user.role);
-        router.push("/onboarding");
+        // If registration is successful, sign in using NextAuth
+        const result = await signIn("credentials", {
+          email: formData.email,
+          password: formData.password,
+          redirect: false,
+        });
+
+        if (result?.error) {
+          setError(result.error);
+        } else {
+          router.push("/onboarding");
+          router.refresh();
+        }
       } else {
         setError(data.message || "Registration failed");
       }
     } catch (error) {
       console.error("Registration error:", error);
       setError("Failed to register. Please try again.");
+    } finally {
       setLoading(false);
     }
   };

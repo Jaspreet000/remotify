@@ -1,160 +1,133 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { useState } from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { signOut, useSession } from "next-auth/react";
+import {
+  Home,
+  User,
+  Settings,
+  Clock,
+  BarChart2,
+  LogOut,
+  Menu,
+  X,
+} from "lucide-react";
 
 export default function Navbar() {
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
   const pathname = usePathname();
+  const { data: session } = useSession();
 
-  useEffect(() => {
-    const token = localStorage.getItem('token');
-    const userRole = localStorage.getItem('userRole');
-    setIsLoggedIn(!!token);
-    setIsAdmin(userRole === 'admin');
-  }, []);
-
-  const menuItems = [
-    // Core Navigation
-    { href: '/', label: 'Home', public: true },
-    { href: '/dashboard', label: 'Dashboard', auth: true },
-    
-    // Focus & Productivity
-    { href: '/focus', label: 'Focus Mode', auth: true },
-    { href: '/analytics', label: 'Analytics', auth: true },
-    
-    // Collaboration
-    { href: '/collaboration', label: 'Team Insights', auth: true },
-    { href: '/leaderboard', label: 'Leaderboard', auth: true },
-    
-    // User Settings & Profile
-    { href: '/profile', label: 'Profile', auth: true },
-    { href: '/settings', label: 'Settings', auth: true },
-    
-    // Admin Only
-    { href: '/admin-dashboard', label: 'Admin Panel', admin: true },
-    
-    // Authentication
-    { href: '/auth/login', label: 'Login', public: true, hideIfAuth: true },
-    { href: '/auth/register', label: 'Register', public: true, hideIfAuth: true },
+  const navigation = [
+    { name: "Dashboard", href: "/dashboard", icon: Home },
+    { name: "Profile", href: "/profile", icon: User },
+    { name: "Focus", href: "/focus", icon: Clock },
+    { name: "Analytics", href: "/analytics", icon: BarChart2 },
+    { name: "Settings", href: "/settings", icon: Settings },
   ];
 
-  const isActive = (path: string) => pathname === path;
+  const handleSignOut = async () => {
+    await signOut({ redirect: true, callbackUrl: "/auth/login" });
+  };
+
+  if (!session) return null;
 
   return (
-    <nav className="bg-white shadow-md fixed top-0 left-0 w-full z-50">
+    <nav className="bg-white dark:bg-gray-800 fixed w-full z-50 shadow-sm">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16">
-          {/* Logo */}
-          <div className="flex-shrink-0">
-            <Link href="/" className="text-2xl font-bold text-blue-600">
-              ProductivityHub
-            </Link>
-          </div>
-
+        <div className="flex justify-between h-16">
           {/* Desktop Menu */}
-          <div className="hidden md:flex space-x-4">
-            {menuItems.map((item) => {
-              const shouldShow = 
-                (item.public && (!item.hideIfAuth || !isLoggedIn)) ||
-                (item.auth && isLoggedIn) ||
-                (item.admin && isAdmin);
-
-              if (!shouldShow) return null;
-
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={`px-3 py-2 rounded-md text-sm font-medium transition-colors
-                    ${isActive(item.href)
-                      ? 'bg-blue-100 text-blue-700'
-                      : 'text-gray-700 hover:bg-gray-100 hover:text-blue-600'
-                    }`}
-                >
-                  {item.label}
-                </Link>
-              );
-            })}
-            
-            {isLoggedIn && (
-              <button
-                onClick={() => {
-                  localStorage.removeItem('token');
-                  localStorage.removeItem('userRole');
-                  window.location.href = '/auth/login';
-                }}
-                className="px-3 py-2 rounded-md text-sm font-medium text-red-600 hover:bg-red-50"
+          <div className="flex">
+            <div className="flex-shrink-0 flex items-center">
+              <Link
+                href="/dashboard"
+                className="text-xl font-bold text-blue-600"
               >
-                Logout
-              </button>
-            )}
+                RWE
+              </Link>
+            </div>
+            <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
+              {navigation.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <Link
+                    key={item.name}
+                    href={item.href}
+                    className={`${
+                      pathname === item.href
+                        ? "border-blue-500 text-gray-900 dark:text-white"
+                        : "border-transparent text-gray-500 dark:text-gray-300 hover:border-gray-300 dark:hover:border-gray-700"
+                    } inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium`}
+                  >
+                    <Icon className="h-4 w-4 mr-2" />
+                    {item.name}
+                  </Link>
+                );
+              })}
+            </div>
           </div>
 
-          {/* Mobile Menu Button */}
-          <div className="flex md:hidden">
+          {/* User Menu */}
+          <div className="hidden sm:ml-6 sm:flex sm:items-center">
             <button
-              onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className="inline-flex items-center justify-center p-2 rounded-md text-gray-700 hover:text-blue-600 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-600"
+              onClick={handleSignOut}
+              className="p-2 rounded-md text-gray-500 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white focus:outline-none"
             >
-              <span className="sr-only">Open main menu</span>
-              {isMenuOpen ? (
-                <svg className="block h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
+              <LogOut className="h-5 w-5" />
+            </button>
+          </div>
+
+          {/* Mobile menu button */}
+          <div className="flex items-center sm:hidden">
+            <button
+              onClick={() => setIsOpen(!isOpen)}
+              className="inline-flex items-center justify-center p-2 rounded-md text-gray-500 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white focus:outline-none"
+            >
+              {isOpen ? (
+                <X className="h-6 w-6" />
               ) : (
-                <svg className="block h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16m-7 6h7" />
-                </svg>
+                <Menu className="h-6 w-6" />
               )}
             </button>
           </div>
         </div>
       </div>
 
-      {/* Mobile Menu */}
-      {isMenuOpen && (
-        <div className="md:hidden bg-white border-t">
-          <div className="px-2 pt-2 pb-3 space-y-1">
-            {menuItems.map((item) => {
-              const shouldShow = 
-                (item.public && (!item.hideIfAuth || !isLoggedIn)) ||
-                (item.auth && isLoggedIn) ||
-                (item.admin && isAdmin);
-
-              if (!shouldShow) return null;
-
+      {/* Mobile menu */}
+      {isOpen && (
+        <div className="sm:hidden">
+          <div className="pt-2 pb-3 space-y-1">
+            {navigation.map((item) => {
+              const Icon = item.icon;
               return (
                 <Link
-                  key={item.href}
+                  key={item.name}
                   href={item.href}
-                  className={`block px-3 py-2 rounded-md text-base font-medium ${
-                    isActive(item.href)
-                      ? 'bg-blue-100 text-blue-700'
-                      : 'text-gray-700 hover:bg-gray-100 hover:text-blue-600'
-                  }`}
-                  onClick={() => setIsMenuOpen(false)}
+                  className={`${
+                    pathname === item.href
+                      ? "bg-blue-50 dark:bg-gray-900 border-blue-500 text-blue-700 dark:text-white"
+                      : "border-transparent text-gray-500 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                  } block pl-3 pr-4 py-2 border-l-4 text-base font-medium`}
+                  onClick={() => setIsOpen(false)}
                 >
-                  {item.label}
+                  <div className="flex items-center">
+                    <Icon className="h-4 w-4 mr-2" />
+                    {item.name}
+                  </div>
                 </Link>
               );
             })}
-            
-            {isLoggedIn && (
-              <button
-                onClick={() => {
-                  localStorage.removeItem('token');
-                  localStorage.removeItem('userRole');
-                  window.location.href = '/auth/login';
-                }}
-                className="block w-full text-left px-3 py-2 rounded-md text-base font-medium text-red-600 hover:bg-red-50"
-              >
-                Logout
-              </button>
-            )}
+            <button
+              onClick={handleSignOut}
+              className="block w-full text-left pl-3 pr-4 py-2 border-l-4 border-transparent text-gray-500 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 text-base font-medium"
+            >
+              <div className="flex items-center">
+                <LogOut className="h-4 w-4 mr-2" />
+                Sign Out
+              </div>
+            </button>
           </div>
         </div>
       )}

@@ -1,52 +1,21 @@
 import { NextResponse } from 'next/server';
-import { dbConnect } from '@/lib/dbConnect';
+import { dbConnect } from '@/lib/db';
 import User from '@/models/User';
-import { verifyToken } from '@/lib/auth';
-
-interface DecodedToken {
-  id: string;
-  email: string;
-  role: string;
-  iat: number;
-  exp: number;
-}
-
-interface UserSettings {
-  focus: {
-    defaultDuration: number;
-    breakDuration: number;
-    sessionsBeforeLongBreak: number;
-    blockedSites: string[];
-    blockedApps: string[];
-  };
-  notifications: {
-    enabled: boolean;
-    breakReminders: boolean;
-    progressUpdates: boolean;
-    teamActivity: boolean;
-  };
-  theme: {
-    mode: 'light' | 'dark';
-    color: string;
-  };
-}
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
 
 export async function GET(request: Request) {
   try {
-    await dbConnect();
-
-    const authHeader = request.headers.get('Authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.email) {
       return NextResponse.json(
-        { success: false, message: 'Authorization token missing' },
+        { success: false, message: 'Unauthorized' },
         { status: 401 }
       );
     }
 
-    const token = authHeader.split(' ')[1];
-    const decoded = verifyToken(token) as DecodedToken;
-
-    const user = await User.findById(decoded.id).select('settings');
+    await dbConnect();
+    const user = await User.findOne({ email: session.user.email });
     if (!user) {
       return NextResponse.json(
         { success: false, message: 'User not found' },
@@ -54,14 +23,22 @@ export async function GET(request: Request) {
       );
     }
 
-    return NextResponse.json(
-      { success: true, settings: user.settings || {} },
-      { status: 200 }
-    );
+    return NextResponse.json({
+      success: true,
+      settings: {
+        workDuration: user.productivitySettings?.workDuration || 25,
+        shortBreakDuration: user.productivitySettings?.shortBreakDuration || 5,
+        longBreakDuration: user.productivitySettings?.longBreakDuration || 15,
+        sessionsUntilLongBreak: user.productivitySettings?.sessionsUntilLongBreak || 4,
+        soundEnabled: user.productivitySettings?.soundEnabled ?? true,
+        notificationsBlocked: user.productivitySettings?.notificationsBlocked ?? false,
+        blockedSites: user.blockedSites || [],
+      },
+    });
   } catch (error) {
-    console.error('Settings fetch error:', error);
+    console.error('Settings API Error:', error);
     return NextResponse.json(
-      { success: false, message: 'Server error' },
+      { success: false, message: 'Internal server error' },
       { status: 500 }
     );
   }
@@ -69,32 +46,28 @@ export async function GET(request: Request) {
 
 export async function PATCH(request: Request) {
   try {
-    await dbConnect();
-
-    const authHeader = request.headers.get('Authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.email) {
       return NextResponse.json(
-        { success: false, message: 'Authorization token missing' },
+        { success: false, message: 'Unauthorized' },
         { status: 401 }
       );
     }
 
-    const token = authHeader.split(' ')[1];
-    const decoded = verifyToken(token) as DecodedToken;
-    const updates = await request.json() as Partial<UserSettings>;
-
-    if (!validateSettings(updates)) {
-      return NextResponse.json(
-        { success: false, message: 'Invalid settings format' },
-        { status: 400 }
-      );
-    }
-
-    const user = await User.findByIdAndUpdate(
-      decoded.id,
-      { $set: { settings: updates } },
+    const settings = await request.json();
+    await dbConnect();
+    
+    const user = await User.findOneAndUpdate(
+      { email: session.user.email },
+      { 
+        $set: {
+          productivitySettings: {
+            ...settings,
+          }
+        }
+      },
       { new: true }
-    ).select('settings');
+    );
 
     if (!user) {
       return NextResponse.json(
@@ -103,50 +76,15 @@ export async function PATCH(request: Request) {
       );
     }
 
-    return NextResponse.json(
-      { success: true, settings: user.settings },
-      { status: 200 }
-    );
+    return NextResponse.json({
+      success: true,
+      settings: user.productivitySettings,
+    });
   } catch (error) {
-    console.error('Settings update error:', error);
+    console.error('Settings API Error:', error);
     return NextResponse.json(
-      { success: false, message: 'Server error' },
+      { success: false, message: 'Internal server error' },
       { status: 500 }
     );
   }
-}
-
-function validateSettings(settings: Partial<UserSettings>): boolean {
-  // Basic validation checks
-  if (settings.focus) {
-    const { defaultDuration, breakDuration, sessionsBeforeLongBreak } = settings.focus;
-    
-    // Validate duration settings
-    if (defaultDuration && (defaultDuration < 1 || defaultDuration > 120)) {
-      return false;
-    }
-    if (breakDuration && (breakDuration < 1 || breakDuration > 30)) {
-      return false;
-    }
-    if (sessionsBeforeLongBreak && (sessionsBeforeLongBreak < 1 || sessionsBeforeLongBreak > 10)) {
-      return false;
-    }
-  }
-
-  // Validate theme settings
-  if (settings.theme) {
-    if (settings.theme.mode && !['light', 'dark'].includes(settings.theme.mode)) {
-      return false;
-    }
-  }
-
-  // Validate notification settings
-  if (settings.notifications) {
-    const notificationValues = Object.values(settings.notifications);
-    if (notificationValues.some(value => typeof value !== 'boolean')) {
-      return false;
-    }
-  }
-
-  return true;
 }
