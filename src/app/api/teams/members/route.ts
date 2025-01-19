@@ -97,7 +97,7 @@ export async function DELETE(request: Request) {
     }
 
     // Check if user is the team leader
-    const member = team.members.find(m => m.userId.equals(user._id));
+    const member = team.members.find((m: { userId: { equals: (id: any) => boolean }; role?: string }) => m.userId.equals(user._id));
     if (member?.role === 'leader') {
       return NextResponse.json(
         { success: false, message: "Team leader cannot leave. Delete the team instead." },
@@ -154,7 +154,7 @@ export async function PATCH(request: Request) {
     }
 
     // Check if user is team leader
-    const currentMember = team.members.find(m => m.userId.equals(user._id));
+    const currentMember = team.members.find((m: { userId: { equals: (id: any) => boolean }; role?: string }) => m.userId.equals(user._id));
     if (!currentMember || currentMember.role !== 'leader') {
       return NextResponse.json(
         { success: false, message: "Only team leaders can update member roles" },
@@ -173,7 +173,7 @@ export async function PATCH(request: Request) {
     }
 
     // Find the target member
-    const targetMember = team.members.find(m => m.userId.toString() === memberId);
+    const targetMember = team.members.find((m: { userId: { toString: () => string }; role?: string }) => m.userId.toString() === memberId);
     if (!targetMember) {
       return NextResponse.json(
         { success: false, message: "Member not found in team" },

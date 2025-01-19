@@ -5,6 +5,13 @@ import dbConnect from "@/lib/dbConnect";
 import User from "@/models/User";
 import { generateDailyQuests, generateWeeklyQuests } from "@/lib/gamificationService";
 
+interface Achievement {
+  id: string;
+  name: string;
+  description?: string;
+  unlockedAt?: Date;
+}
+
 export async function GET() {
   try {
     const session = await getServerSession(authOptions);
@@ -67,7 +74,7 @@ export async function GET() {
         achievements: user.achievements?.length || 0,
         leaderboardRank,
       },
-      achievements: (user.achievements || []).map(achievement => ({
+      achievements: (user.achievements || []).map((achievement: Record<string, any> & { unlockedAt?: Date }) => ({
         ...achievement,
         unlockedAt: achievement.unlockedAt?.toISOString()
       })),

@@ -36,7 +36,7 @@ export async function GET(request: Request) {
     }
 
     // Sort updates by creation date
-    const updates = team.asyncUpdates.sort((a, b) => 
+    const updates = team.asyncUpdates.sort((a: { createdAt: string | Date }, b: { createdAt: string | Date }) => 
       new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     );
 
@@ -149,7 +149,7 @@ export async function PATCH(request: Request) {
 
     if (action === 'view') {
       // Add view if not already viewed
-      if (!update.views.some(view => view.userId.equals(user._id))) {
+      if (!update.views.some((view: { userId: { equals: (id: any) => boolean } }) => view.userId.equals(user._id))) {
         update.views.push({
           userId: user._id,
           viewedAt: new Date()
@@ -158,7 +158,7 @@ export async function PATCH(request: Request) {
     } else if (action === 'react') {
       // Add or update reaction
       const existingReaction = update.reactions.find(
-        reaction => reaction.userId.equals(user._id)
+        (reaction: { userId: { equals: (id: any) => boolean } }) => reaction.userId.equals(user._id)
       );
       if (existingReaction) {
         existingReaction.type = reactionType;

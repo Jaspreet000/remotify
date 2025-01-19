@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/dbConnect';
-import User, { IUser } from '@/models/User';
+import User, { UserDocument } from '@/models/User';
 import Team, { ITeam } from '@/models/Team';
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { getPersonalizedRecommendations, analyzeUserPerformance, generateTeamInsights } from '@/lib/aiService';
+import mongoose from 'mongoose';
 
 interface LeaderboardEntry {
   userId: string;
@@ -98,6 +99,15 @@ interface LeaderboardResponse {
   };
 }
 
+interface TeamWithId extends ITeam {
+  _id: mongoose.Types.ObjectId;
+  code: string;
+  leaderboard: {
+    weeklyRank: number;
+    weeklyScore: number;
+  };
+}
+
 export async function GET() {
   try {
     const session = await getServerSession(authOptions);
@@ -109,21 +119,22 @@ export async function GET() {
       );
     }
 
+    const user = session.user;
     await dbConnect();
 
     // Get current user and their team
-    const currentUser = await User.findOne({ email: session.user.email }).lean();
+    const currentUser = await User.findOne({ email: user.email }).exec() as (UserDocument & { _id: mongoose.Types.ObjectId }) | null;
     const userTeam = currentUser?.teamCode 
-      ? await Team.findOne({ code: currentUser.teamCode }).lean()
+      ? await Team.findOne({ code: currentUser.teamCode }).lean() as unknown as TeamWithId
       : null;
 
     // Get all users with their work sessions and habit analysis
     const users = await User.find({})
       .select('name email profile workSessions habitAnalysis teamCode')
-      .lean();
+      .lean() as unknown as Array<{ _id: mongoose.Types.ObjectId; name: string; profile: { avatar: string }; workSessions?: any[]; teamCode?: string }>;
 
     // Get all teams
-    const teams = await Team.find({}).lean();
+    const teams = await Team.find({}).lean() as unknown as Array<TeamWithId>;
 
     // Calculate scores and create leaderboard entries
     const leaderboardEntries = await Promise.all(users.map(async (user) => {
@@ -161,8 +172,17 @@ export async function GET() {
       memberCount: team.members.length,
       score: team.leaderboard.weeklyScore,
       rank: team.leaderboard.weeklyRank,
-      achievements: team.achievements,
-      stats: team.stats,
+      achievements: team.achievements.map(a => ({
+        id: a.id.toString(),
+        name: a.name,
+        unlockedAt: a.unlockedAt
+      })),
+      stats: {
+        totalFocusTime: team.stats.totalFocusTime,
+        averageProductivity: team.stats.averageProductivity,
+        weeklyStreak: 0, // Default value since it's not in ITeamStats
+        collaborationScore: team.stats.collaborationScore
+      },
       activeChallenge: team.challenges.find(c => c.status === 'active')
     }));
 
@@ -177,7 +197,7 @@ export async function GET() {
 
     // Find current user's position
     const currentUserIndex = sortedEntries.findIndex(
-      entry => entry.userId === session.user.id
+      entry => entry.userId === currentUser?._id.toString()
     );
     const userRank = sortedEntries[currentUserIndex];
 

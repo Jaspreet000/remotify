@@ -82,7 +82,7 @@ export async function POST(request: Request) {
     today.setHours(0, 0, 0, 0);
 
     let todayMood = team.moodTracking.teamMood.find(
-      m => new Date(m.date).getTime() === today.getTime()
+      (m: { date: string | Date }) => new Date(m.date).getTime() === today.getTime()
     );
 
     if (!todayMood) {
@@ -96,7 +96,7 @@ export async function POST(request: Request) {
 
     // Update or add user's response
     const existingResponse = todayMood.responses.find(
-      r => r.userId.equals(user._id)
+      (r: { userId: { equals: (id: any) => boolean } }) => r.userId.equals(user._id)
     );
 
     if (existingResponse) {
@@ -124,23 +124,23 @@ export async function POST(request: Request) {
     };
 
     todayMood.averageScore = todayMood.responses.reduce(
-      (acc, response) => acc + moodScores[response.mood as keyof typeof moodScores],
+      (acc: number, response: { mood: keyof typeof moodScores }) => acc + moodScores[response.mood as keyof typeof moodScores],
       0
     ) / todayMood.responses.length;
 
     // Generate insights if needed
     const lastWeekMoods = team.moodTracking.teamMood
-      .filter(m => {
+      .filter((m: { date: string | Date }) => {
         const date = new Date(m.date);
         const weekAgo = new Date();
         weekAgo.setDate(weekAgo.getDate() - 7);
         return date >= weekAgo;
       })
-      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      .sort((a: { date: string | Date }, b: { date: string | Date }) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
     if (lastWeekMoods.length > 0) {
       const averageLastWeek = lastWeekMoods.reduce(
-        (acc, day) => acc + day.averageScore,
+        (acc: number, day: { averageScore: number }) => acc + day.averageScore,
         0
       ) / lastWeekMoods.length;
 

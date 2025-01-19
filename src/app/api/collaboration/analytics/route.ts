@@ -2,16 +2,11 @@ import { NextResponse } from 'next/server';
 import { dbConnect } from '@/lib/dbConnect';
 import User from '@/models/User';
 import Team from '@/models/Team';
-import { verifyToken } from '@/lib/auth';
+import { verifyJWT, TokenPayload } from '@/lib/auth';
 import { analyzeTeamDynamics } from '@/lib/aiService';
+import { JwtPayload } from 'jsonwebtoken';
 
-interface DecodedToken {
-  id: string;
-  email: string;
-  role: string;
-  iat: number;
-  exp: number;
-}
+interface DecodedToken extends TokenPayload, JwtPayload {}
 
 interface TeamMember {
   _id: string;
@@ -83,7 +78,7 @@ export async function GET(request: Request) {
     }
 
     const token = authHeader.split(' ')[1];
-    const decoded = verifyToken(token) as DecodedToken;
+    const decoded = verifyJWT(token) as unknown as DecodedToken;
 
     const user = await User.findById(decoded.id).populate('teams');
     if (!user?.teams?.length) {

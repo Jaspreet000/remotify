@@ -78,27 +78,25 @@ export async function PATCH(req: Request) {
     };
 
     // Use Gemini AI to determine optimal notification timing
-    const result = await model.generateContent({
-      contents: [{
-        parts: [{
-          text: `Analyze the user's focus patterns and determine the optimal notification strategy for ${type} notifications.
-                 Context: ${JSON.stringify(userContext)}
-                 Consider:
-                 1. User's typical focus periods
-                 2. Productivity peaks
-                 3. Break patterns
-                 4. Notification priority
-                 Provide timing recommendations in JSON format.`
-        }]
-      }]
-    });
+    const result = await model.generateContent([
+      {
+        text: `Analyze the user's focus patterns and determine the optimal notification strategy for ${type} notifications.
+               Context: ${JSON.stringify(userContext)}
+               Consider:
+               1. User's typical focus periods
+               2. Productivity peaks
+               3. Break patterns
+               4. Notification priority
+               Provide timing recommendations in JSON format.`
+      }
+    ]);
 
     const response = await result.response;
     const aiRecommendations = JSON.parse(response.text());
 
     // Update notification preferences with AI recommendations
     const prefIndex = user.notificationPreferences?.findIndex(
-      (pref) => pref.type === type
+      (pref: { type: string }) => pref.type === type
     );
 
     const updatedPref = {

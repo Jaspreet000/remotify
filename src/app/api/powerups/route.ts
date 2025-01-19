@@ -158,7 +158,7 @@ export async function POST(request: Request) {
       });
     } else if (action === 'use') {
       // Check if user has the power-up in inventory
-      const powerUpIndex = user.inventory.powerUps?.findIndex(p => p.id === powerUpId);
+      const powerUpIndex = user.inventory.powerUps?.findIndex((p: { id: string }) => p.id === powerUpId);
       if (powerUpIndex === -1) {
         return NextResponse.json(
           { success: false, message: "Power-up not in inventory" },

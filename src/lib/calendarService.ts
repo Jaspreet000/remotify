@@ -74,7 +74,8 @@ export async function blockFocusTime(auth: any, startTime: Date, duration: numbe
 }
 
 export async function findAvailableSlots(auth: any, duration: number, startDate: Date, endDate: Date) {
-  const events = await listCalendarEvents(auth, startDate, endDate);
+  const calendarEvents = await listCalendarEvents(auth, startDate, endDate);
+  const events = (calendarEvents || []) as CalendarEvent[];
   const workingHourStart = 9; // 9 AM
   const workingHourEnd = 17; // 5 PM
   
@@ -87,6 +88,7 @@ export async function findAvailableSlots(auth: any, duration: number, startDate:
       const dayEnd = new Date(currentDate.setHours(workingHourEnd, 0, 0, 0));
       
       const dayEvents = events.filter(event => {
+        if (!event?.start?.dateTime) return false;
         const eventStart = new Date(event.start.dateTime);
         return eventStart.getDate() === currentDate.getDate();
       });

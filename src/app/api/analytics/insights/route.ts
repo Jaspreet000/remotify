@@ -46,10 +46,7 @@ export async function GET(req: Request) {
     const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
 
     // Get predictive analytics
-    const predictiveResult = await model.generateContent({
-      contents: [{
-        parts: [{
-          text: `You are a JSON-only response API. Analyze the user's focus and productivity patterns and provide predictive analytics.
+    const predictiveResult = await model.generateContent(`You are a JSON-only response API. Analyze the user's focus and productivity patterns and provide predictive analytics.
                  User Data: ${JSON.stringify(userData)}
                  Return ONLY a JSON object with these exact keys:
                  {
@@ -57,10 +54,7 @@ export async function GET(req: Request) {
                    "projectedProductivity": number,
                    "recommendedBreaks": number,
                    "nextWeekForecast": [{ "date": string, "predictedScore": number }]
-                 }`
-        }]
-      }]
-    });
+                 }`);
 
     const predictiveResponse = await predictiveResult.response;
     let predictiveMetrics;
@@ -78,10 +72,7 @@ export async function GET(req: Request) {
     }
 
     // Get team performance comparison
-    const teamAnalysisResult = await model.generateContent({
-      contents: [{
-        parts: [{
-          text: `You are a JSON-only response API. Compare user's performance with team data and provide insights.
+    const teamAnalysisResult = await model.generateContent(`You are a JSON-only response API. Compare user's performance with team data and provide insights.
                  User Data: ${JSON.stringify(userData)}
                  Team Data: ${JSON.stringify(teamData)}
                  Return ONLY a JSON object with these exact keys:
@@ -90,10 +81,7 @@ export async function GET(req: Request) {
                    "averageProductivity": number,
                    "ranking": number,
                    "topPerformers": [{ "name": string, "score": number }]
-                 }`
-        }]
-      }]
-    });
+                 }`);
 
     const teamAnalysisResponse = await teamAnalysisResult.response;
     let teamComparison;
@@ -111,10 +99,7 @@ export async function GET(req: Request) {
     }
 
     // Get burnout prevention insights
-    const burnoutResult = await model.generateContent({
-      contents: [{
-        parts: [{
-          text: `You are a JSON-only response API. Analyze user's work patterns for burnout risk and provide prevention insights.
+    const burnoutResult = await model.generateContent(`You are a JSON-only response API. Analyze user's work patterns for burnout risk and provide prevention insights.
                  User Data: ${JSON.stringify(userData)}
                  Return ONLY a JSON object with these exact keys:
                  {
@@ -122,10 +107,7 @@ export async function GET(req: Request) {
                    "riskFactors": string[],
                    "recommendations": string[],
                    "wellnessScore": number
-                 }`
-        }]
-      }]
-    });
+                 }`);
 
     const burnoutResponse = await burnoutResult.response;
     let burnoutMetrics;

@@ -30,7 +30,10 @@ export async function POST(req: Request) {
           text: 'Analyze and reduce background noise in the following audio data while preserving speech clarity.',
         },
         {
-          audio: audioData,
+          inlineData: {
+            data: audioData,
+            mimeType: 'audio/wav'
+          }
         },
       ]);
 

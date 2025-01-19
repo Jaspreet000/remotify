@@ -110,7 +110,7 @@ export async function PATCH(req: Request) {
       );
     }
 
-    const siteIndex = user.blockedSites?.findIndex((site) => site.url === url);
+    const siteIndex = user.blockedSites?.findIndex((site: { url: string; isBlocked: boolean }) => site.url === url);
     if (siteIndex === -1) {
       return NextResponse.json(
         { success: false, message: 'Site not found' },

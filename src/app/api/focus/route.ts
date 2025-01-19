@@ -1,15 +1,12 @@
 import { NextResponse } from 'next/server';
 import {dbConnect} from '@/lib/dbConnect';
 import FocusSession from '@/models/FocusSession';
-import { verifyToken } from '@/lib/auth';
+import { verifyJWT, TokenPayload } from '@/lib/auth';
 import User from '@/models/User';
+import { JwtPayload } from 'jsonwebtoken';
 
-interface DecodedToken {
-  id: string;
-  email: string;
-  role: string;
-  iat: number;
-  exp: number;
+interface DecodedToken extends TokenPayload, JwtPayload {
+  role: "user" | "admin";
 }
 
 interface FocusSessionData {
@@ -35,7 +32,7 @@ export async function GET(request: Request) {
     }
 
     const token = authHeader.split(' ')[1];
-    const decoded = verifyToken(token) as DecodedToken;
+    const decoded = verifyJWT(token) as unknown as DecodedToken;
 
     const user = await User.findById(decoded.id);
     if (!user) {
@@ -48,8 +45,8 @@ export async function GET(request: Request) {
       breakDuration: user.preferences?.focus?.breakDuration || 5,
       sessionsPerDay: user.preferences?.focus?.sessionsBeforeLongBreak || 4,
       blockedItems: [
-        ...(user.preferences?.focus?.blockedSites || []).map(site => ({ type: 'website' as const, name: site })),
-        ...(user.preferences?.focus?.blockedApps || []).map(app => ({ type: 'app' as const, name: app }))
+        ...(user.preferences?.focus?.blockedSites || []).map((site: string) => ({ type: 'website' as const, name: site })),
+        ...(user.preferences?.focus?.blockedApps || []).map((app: string) => ({ type: 'app' as const, name: app }))
       ]
     };
 
@@ -71,7 +68,7 @@ export async function POST(request: Request) {
     }
 
     const token = authHeader.split(' ')[1];
-    const decoded = verifyToken(token) as DecodedToken;
+    const decoded = verifyJWT(token) as unknown as DecodedToken;
 
     const { duration, blockedItems } = await request.json();
 
@@ -102,7 +99,7 @@ export async function PATCH(request: Request) {
     }
 
     const token = authHeader.split(' ')[1];
-    const decoded = verifyToken(token) as DecodedToken;
+    const decoded = verifyJWT(token) as unknown as DecodedToken;
 
     const { sessionId } = await request.json();
     const session = await FocusSession.findOneAndUpdate(

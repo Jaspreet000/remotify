@@ -34,7 +34,7 @@ function calculateLevelInfo(totalXP: number): LevelInfo {
   const progress = (currentXP / requiredXP) * 100;
 
   // Define rewards for next level
-  const nextRewards = {
+  const nextRewards: { coins: number; powerUp?: string } = {
     coins: level * 100
   };
 
@@ -95,9 +95,9 @@ export async function GET(request: Request) {
 
     // Calculate focus score trend
     const recentSessions = user.workSessions?.slice(-5) || [];
-    const focusScores = recentSessions.map(session => session.focusScore);
+    const focusScores = recentSessions.map((session: { focusScore: number }) => session.focusScore);
     const averageFocusScore = focusScores.length > 0
-      ? Math.round(focusScores.reduce((a, b) => a + b, 0) / focusScores.length)
+      ? Math.round(focusScores.reduce((a: number, b: number) => a + b, 0) / focusScores.length)
       : 0;
 
     const focusTrend = focusScores.length >= 2
@@ -126,7 +126,7 @@ export async function GET(request: Request) {
         recentActivity: {
           sessions: recentSessions,
           achievements: user.achievements?.slice(-3) || [],
-          quests: user.quests?.filter(q => !q.claimed && q.completed).slice(-3) || []
+          quests: user.quests?.filter((q: { claimed: boolean; completed: boolean }) => !q.claimed && q.completed).slice(-3) || []
         }
       }
     });

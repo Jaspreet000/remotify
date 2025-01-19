@@ -47,7 +47,7 @@ export async function GET(req: Request) {
     const habitAnalysis = userData.getRecentHabitAnalysis(7);
 
     const analysisData: ProductivityData = {
-      sessions: recentSessions.map(session => ({
+      sessions: recentSessions.map((session: WorkSession) => ({
         startTime: session.startTime,
         duration: session.duration,
         focusScore: session.focusScore,
@@ -55,7 +55,7 @@ export async function GET(req: Request) {
       })),
       habits: {
         summary: {
-          averageProductivity: habitAnalysis.reduce((acc, h) => acc + h.productivity, 0) / habitAnalysis.length,
+          averageProductivity: habitAnalysis.reduce((acc: number, h: { productivity: number }) => acc + h.productivity, 0) / habitAnalysis.length,
           commonPatterns: []
         }
       },

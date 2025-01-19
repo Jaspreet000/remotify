@@ -103,7 +103,7 @@ export async function POST(request: Request) {
     const newAchievements = [];
 
     // Focus Time Achievement
-    if (user.stats.totalFocusTime >= 3600 && !achievements.some(a => a.id === 'focus_master')) {
+    if (user.stats.totalFocusTime >= 3600 && !achievements.some((a: { id: string }) => a.id === 'focus_master')) {
       newAchievements.push({
         id: 'focus_master',
         name: 'Focus Master',
@@ -119,7 +119,7 @@ export async function POST(request: Request) {
     }
 
     // Streak Achievement
-    if (user.stats.weeklyStreak >= 7 && !achievements.some(a => a.id === 'streak_warrior')) {
+    if (user.stats.weeklyStreak >= 7 && !achievements.some((a: { id: string }) => a.id === 'streak_warrior')) {
       newAchievements.push({
         id: 'streak_warrior',
         name: 'Streak Warrior',
@@ -135,7 +135,7 @@ export async function POST(request: Request) {
     }
 
     // High Score Achievement
-    if (focusScore >= 95 && !achievements.some(a => a.id === 'perfectionist')) {
+    if (focusScore >= 95 && !achievements.some((a: { id: string }) => a.id === 'perfectionist')) {
       newAchievements.push({
         id: 'perfectionist',
         name: 'Perfectionist',

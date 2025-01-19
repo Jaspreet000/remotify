@@ -35,15 +35,21 @@ interface Room {
   messages: Message[];
 }
 
+interface NewRoom {
+  name: string;
+  description: string;
+  type: "casual" | "interests" | "project";
+}
+
 export default function WaterCooler() {
   const [rooms, setRooms] = useState<Room[]>([]);
   const [activeRoom, setActiveRoom] = useState<Room | null>(null);
   const [message, setMessage] = useState("");
   const [showNewRoomForm, setShowNewRoomForm] = useState(false);
-  const [newRoom, setNewRoom] = useState({
+  const [newRoom, setNewRoom] = useState<NewRoom>({
     name: "",
     description: "",
-    type: "casual" as const,
+    type: "casual",
   });
 
   useEffect(() => {
@@ -315,7 +321,7 @@ export default function WaterCooler() {
             {activeRoom.messages.map((message, index) => (
               <div key={index} className="flex items-start space-x-3">
                 <Image
-                  src={message.userId.image}
+                  src={message.userId.image || "/default-avatar.png"}
                   alt={`${message.userId.name}'s avatar`}
                   width={40}
                   height={40}
@@ -368,7 +374,7 @@ export default function WaterCooler() {
                 className="flex items-center space-x-3"
               >
                 <Image
-                  src={participant.userId.image}
+                  src={participant.userId.image || "/default-avatar.png"}
                   alt={`${participant.userId.name}'s avatar`}
                   width={40}
                   height={40}

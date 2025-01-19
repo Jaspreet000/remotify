@@ -4,7 +4,23 @@ import User from '@/models/User';
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 
-const COWORKING_ROOMS = {
+interface Participant {
+  id: string;
+  name: string;
+  status: 'focusing' | 'break' | 'idle';
+}
+
+const COWORKING_ROOMS: Record<string, {
+  id: string;
+  name: string;
+  ambientSound: string;
+  participants: Participant[];
+  focusTimer: {
+    duration: number;
+    remainingTime: number;
+    isActive: boolean;
+  };
+}> = {
   'deep-work': {
     id: 'deep-work',
     name: 'Deep Work Space',

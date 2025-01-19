@@ -1,4 +1,27 @@
-import mongoose from 'mongoose';
+import mongoose, { Document } from 'mongoose';
+
+export interface UserDocument extends Document {
+  email: string;
+  name?: string;
+  experience?: number;
+  teamCode?: string;
+  stats: {
+    totalFocusTime: number;
+    weeklyStreak: number;
+    averageSessionScore: number;
+  };
+  achievements: any[];
+  preferences?: {
+    focus?: {
+      defaultDuration?: number;
+      breakDuration?: number;
+      sessionsBeforeLongBreak?: number;
+      blockedSites?: string[];
+      blockedApps?: string[];
+    };
+  };
+  workSessions?: any[];
+}
 
 const userSchema = new mongoose.Schema(
   {
@@ -148,6 +171,7 @@ const userSchema = new mongoose.Schema(
         },
       },
     },
+    teamCode: String,
   },
   {
     timestamps: true,

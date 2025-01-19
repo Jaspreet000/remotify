@@ -3,6 +3,17 @@ import GoogleProvider from "next-auth/providers/google";
 import { getServerSession } from "next-auth/next";
 import jwt from 'jsonwebtoken';
 
+declare module "next-auth" {
+  interface Session {
+    user: {
+      id?: string;
+      name?: string | null;
+      email?: string | null;
+      image?: string | null;
+    }
+  }
+}
+
 export const authOptions: NextAuthOptions = {
   providers: [
     GoogleProvider({
@@ -30,15 +41,28 @@ interface SessionUser {
   image?: string | null;
 }
 
+export function verifyJWT(token: string): TokenPayload {
+  const secret = process.env.JWT_SECRET!;
+  return jwt.verify(token, secret) as TokenPayload;
+}
+
 export async function verifyToken(req: Request): Promise<SessionUser | null> {
-  const session = await getServerSession(authOptions);
-  if (!session?.user?.email) {
+  try {
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      return null;
+    }
+
+    const token = authHeader.split(' ')[1];
+    const decoded = verifyJWT(token);
+
+    return {
+      id: decoded.id,
+      email: decoded.email
+    };
+  } catch (error) {
     return null;
   }
-  return {
-    ...session.user,
-    id: session.user.id || undefined
-  };
 }
 
 export async function getCurrentUser() {
@@ -46,10 +70,16 @@ export async function getCurrentUser() {
   return session?.user;
 }
 
-export function generateToken(userId: string) {
+export interface TokenPayload {
+  id: string;
+  email: string;
+  role: "user" | "admin";
+}
+
+export function generateToken(payload: TokenPayload) {
   const secret = process.env.JWT_SECRET!;
   if (!secret) {
     throw new Error('JWT_SECRET is not defined');
   }
-  return jwt.sign({ id: userId }, secret, { expiresIn: '7d' });
+  return jwt.sign(payload, secret, { expiresIn: '7d' });
 }

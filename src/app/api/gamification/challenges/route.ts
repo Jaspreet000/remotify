@@ -2,17 +2,12 @@ import { NextResponse } from 'next/server';
 import { dbConnect } from '@/lib/dbConnect';
 import Challenge from '@/models/Challenge';
 import User from '@/models/User';
-import { verifyToken } from '@/lib/auth';
+import { verifyJWT, TokenPayload } from '@/lib/auth';
 import { generatePersonalizedChallenges } from '@/lib/aiService';
 import type { UserDocument } from '@/models/User';
+import { JwtPayload } from 'jsonwebtoken';
 
-interface DecodedToken {
-  id: string;
-  email: string;
-  role: string;
-  iat: number;
-  exp: number;
-}
+interface DecodedToken extends TokenPayload, JwtPayload {}
 
 interface UserStats {
   level: number;
@@ -60,7 +55,7 @@ export async function GET(request: Request) {
     }
 
     const token = authHeader.split(' ')[1];
-    const decoded = verifyToken(token) as DecodedToken;
+    const decoded = verifyJWT(token) as unknown as DecodedToken;
 
     const user = await User.findById(decoded.id)
       .populate<{ workSessions: Array<{
@@ -80,11 +75,11 @@ export async function GET(request: Request) {
       level: calculateUserLevel(user),
       experience: user.experience || 0,
       achievements: await getRecentAchievements(decoded.id),
-      recentActivity: user.workSessions.slice(-5).map(session => ({
+      recentActivity: user.workSessions.slice(-5).map((session: { focusScore: number; startTime: Date }) => ({
         type: 'focus_session',
         score: session.focusScore,
         timestamp: session.startTime
-      }))
+      }) as const)
     };
 
     const personalizedChallenges = await generatePersonalizedChallenges(userStats);
@@ -125,7 +120,7 @@ export async function POST(request: Request) {
     }
 
     const token = authHeader.split(' ')[1];
-    const decoded = verifyToken(token) as DecodedToken;
+    const decoded = verifyJWT(token) as unknown as DecodedToken;
 
     const challengeData: ChallengeData = await request.json();
     const challenge = await Challenge.create({

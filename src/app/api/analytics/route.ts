@@ -29,6 +29,28 @@ interface TrendAnalysis {
   insights: string[];
 }
 
+interface UserDocument {
+  _id: any;
+  teamCode?: string;
+  email: string;
+  workSessions?: any[];
+  name?: string;
+  profile?: {
+    avatar?: string;
+  };
+}
+
+interface TeamDocument {
+  code: string;
+  members: Array<{
+    userId: UserDocument;
+  }>;
+  challenges?: Array<{
+    status: string;
+  }>;
+  averageProductivity: number;
+}
+
 export async function GET(request: Request) {
   try {
     await dbConnect();
@@ -46,7 +68,7 @@ export async function GET(request: Request) {
     const view = searchParams.get('view') || 'personal';
 
     // First find the user
-    const user = await User.findOne({ email: session.user.email }).lean();
+    const user = (await User.findOne({ email: session.user.email }).lean()) as unknown as UserDocument;
 
     if (!user) {
       return NextResponse.json(
@@ -61,7 +83,7 @@ export async function GET(request: Request) {
     }).lean();
 
     // Attach the sessions to the user object
-    const userWithSessions = {
+    const userWithSessions: UserDocument = {
       ...user,
       workSessions
     };
@@ -72,36 +94,42 @@ export async function GET(request: Request) {
     
     let teamMetrics = null;
     let teamInsights = null;
+    let teamWithSessions: TeamDocument | null = null;
     
-    if (view === 'team' && user.teamCode) {
+    if (view === 'team' && userWithSessions.teamCode) {
       // First find the team and its members
-      const team = await Team.findOne({ code: user.teamCode })
+      const teamDoc = await Team.findOne({ code: userWithSessions.teamCode })
         .populate('members.userId', 'name email profile.avatar')
         .lean();
         
-      if (team) {
+      if (teamDoc) {
+        const teamData = teamDoc as unknown as TeamDocument;
+        
         // Then fetch work sessions for all team members
-        const teamMemberIds = team.members.map((m: any) => m.userId._id);
+        const teamMemberIds = teamData.members.map(m => m.userId._id);
         const allTeamSessions = await FocusSession.find({
           userId: { $in: teamMemberIds }
         }).lean();
 
         // Attach sessions to respective team members
-        const teamWithSessions = {
-          ...team,
-          members: team.members.map((member: any) => ({
+        teamWithSessions = {
+          ...teamData,
+          members: teamData.members.map(member => ({
             ...member,
             userId: {
               ...member.userId,
-              workSessions: allTeamSessions.filter((s: any) => 
+              workSessions: allTeamSessions.filter(s => 
                 s.userId.toString() === member.userId._id.toString()
               )
             }
-          }))
+          })),
+          averageProductivity: calculateTeamProductivity(allTeamSessions)
         };
 
-        teamMetrics = await calculateTeamMetrics(teamWithSessions, timeRange);
-        teamInsights = await generateTeamInsights(teamWithSessions);
+        if (teamWithSessions) {
+          teamMetrics = await calculateTeamMetrics(teamWithSessions, timeRange);
+          teamInsights = await generateTeamInsights(teamWithSessions);
+        }
       }
     }
 
@@ -147,16 +175,16 @@ export async function GET(request: Request) {
           milestones: calculateNextMilestones(personalMetrics),
           predictions: generateProductivityPredictions(productivityTrends)
         },
-        team: teamMetrics && teamInsights ? {
+        team: teamMetrics && teamInsights && teamWithSessions ? {
           comparison: {
-            percentile: calculateTeamPercentile(personalMetrics, teamMetrics),
-            ranking: calculateTeamRanking(user._id, teamMetrics),
-            contribution: calculateTeamContribution(personalMetrics, teamMetrics)
+            percentile: calculateTeamPercentile(personalMetrics, teamWithSessions),
+            ranking: calculateTeamRanking(user._id, teamWithSessions),
+            contribution: calculateTeamContribution(personalMetrics, teamWithSessions)
           },
           dynamics: {
             synergy: teamInsights.teamDynamics.synergy,
             collaboration: teamInsights.collaborationScore,
-            impact: calculateTeamImpact(personalMetrics, teamMetrics)
+            impact: calculateTeamImpact(personalMetrics, teamWithSessions)
           },
           challenges: {
             active: teamInsights.recommendations,
@@ -681,9 +709,9 @@ function calculateChallengeContribution(challenges: any[]): number {
   return (completedChallenges.length / challenges.length) * 100;
 }
 
-function calculateTeamPercentile(personal: ProductivityMetrics, team: any): number {
+function calculateTeamPercentile(personal: ProductivityMetrics, team: TeamDocument): number {
   const personalScore = personal.focusScore;
-  const teamScores = team.members.map((m: any) => 
+  const teamScores = team.members.map(m => 
     calculateAverageProductivity(m.userId.workSessions || [])
   );
   
@@ -691,8 +719,8 @@ function calculateTeamPercentile(personal: ProductivityMetrics, team: any): numb
   return (belowCount / teamScores.length) * 100;
 }
 
-function calculateTeamRanking(userId: string, team: any): number {
-  const memberScores = team.members.map((m: any) => ({
+function calculateTeamRanking(userId: string, team: TeamDocument): number {
+  const memberScores = team.members.map(m => ({
     id: m.userId._id.toString(),
     score: calculateAverageProductivity(m.userId.workSessions || [])
   }));
@@ -701,12 +729,12 @@ function calculateTeamRanking(userId: string, team: any): number {
   return memberScores.findIndex(m => m.id === userId) + 1;
 }
 
-function calculateTeamContribution(personal: ProductivityMetrics, team: any): number {
-  const totalTeamTime = calculateTeamFocusTime(team.members.flatMap((m: any) => m.userId.workSessions || []));
+function calculateTeamContribution(personal: ProductivityMetrics, team: TeamDocument): number {
+  const totalTeamTime = calculateTeamFocusTime(team.members.flatMap(m => m.userId.workSessions || []));
   return (personal.totalTime / totalTeamTime) * 100;
 }
 
-function calculateTeamImpact(personal: ProductivityMetrics, team: any): number {
+function calculateTeamImpact(personal: ProductivityMetrics, team: TeamDocument): number {
   const teamAverage = team.averageProductivity;
   const personalScore = personal.focusScore;
   return ((personalScore - teamAverage) / teamAverage) * 100;

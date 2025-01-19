@@ -41,7 +41,8 @@ export async function GET(request: Request) {
       );
     }
 
-    let challenges = team.challenges;
+    const teamDoc = team as { challenges?: any[] };
+    let challenges = teamDoc.challenges || [];
     if (status) {
       challenges = challenges.filter(c => c.status === status);
     }
@@ -49,7 +50,7 @@ export async function GET(request: Request) {
     // Calculate progress for each challenge
     const challengesWithProgress = challenges.map(challenge => ({
       ...challenge,
-      participants: challenge.participants.map(participant => ({
+      participants: challenge.participants.map((participant: { name: string; email: string; profile: { avatar: string } }) => ({
         ...participant,
         progress: calculateParticipantProgress(participant, challenge)
       }))
@@ -98,7 +99,7 @@ export async function POST(request: Request) {
     }
 
     // Check if user is team leader
-    const member = team.members.find(m => m.userId.equals(user._id));
+    const member = team.members.find((m: { userId: { equals: (id: any) => boolean }; role: string }) => m.userId.equals(user._id));
     if (!member || member.role !== 'leader') {
       return NextResponse.json(
         { success: false, message: "Only team leaders can create challenges" },
@@ -138,9 +139,16 @@ export async function POST(request: Request) {
       .populate('challenges.participants', 'name email profile.avatar')
       .lean();
 
+    if (!updatedTeam) {
+      return NextResponse.json(
+        { success: false, message: "Team not found after update" },
+        { status: 404 }
+      );
+    }
+
     return NextResponse.json({
       success: true,
-      data: updatedTeam.challenges.find(c => c.id === challenge.id)
+      data: (updatedTeam as unknown as { challenges: any[] }).challenges.find(c => c.id === challenge.id)
     });
   } catch (error) {
     console.error('Team Challenges API Error:', error);
@@ -183,7 +191,7 @@ export async function PATCH(request: Request) {
     const body = await request.json();
     const { challengeId, action, progress } = body;
 
-    const challenge = team.challenges.find(c => c.id === challengeId);
+    const challenge = team.challenges.find((c: { id: string }) => c.id === challengeId);
     if (!challenge) {
       return NextResponse.json(
         { success: false, message: "Challenge not found" },
@@ -207,12 +215,12 @@ export async function PATCH(request: Request) {
 
       case 'leave':
         challenge.participants = challenge.participants.filter(
-          p => !p.equals(user._id)
+          (p: { equals: (id: any) => boolean }) => !p.equals(user._id)
         );
         break;
 
       case 'update':
-        if (!challenge.participants.some(p => p.equals(user._id))) {
+        if (!challenge.participants.some((p: { equals: (id: any) => boolean }) => p.equals(user._id))) {
           return NextResponse.json(
             { success: false, message: "User is not a participant" },
             { status: 400 }
@@ -234,13 +242,20 @@ export async function PATCH(request: Request) {
       .populate('challenges.participants', 'name email profile.avatar')
       .lean();
 
-    const updatedChallenge = updatedTeam.challenges.find(c => c.id === challengeId);
+    if (!updatedTeam) {
+      return NextResponse.json(
+        { success: false, message: "Team not found after update" },
+        { status: 404 }
+      );
+    }
+
+    const updatedChallenge = (updatedTeam as unknown as { challenges: any[] }).challenges.find(c => c.id === challengeId);
     
     return NextResponse.json({
       success: true,
       data: {
         ...updatedChallenge,
-        participants: updatedChallenge.participants.map(participant => ({
+        participants: updatedChallenge.participants.map((participant: { name: string; email: string; profile: { avatar: string } }) => ({
           ...participant,
           progress: calculateParticipantProgress(participant, updatedChallenge)
         }))

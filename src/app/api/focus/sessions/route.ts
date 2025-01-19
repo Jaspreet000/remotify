@@ -7,6 +7,13 @@ import { authOptions } from "@/lib/auth";
 import { calculateRewards } from '@/lib/gamificationService';
 import { nanoid } from 'nanoid';
 
+interface Task {
+  id: string;
+  description: string;
+  completed: boolean;
+  completedAt?: Date;
+}
+
 // GET /api/focus/sessions - Get user's focus sessions
 export async function GET(request: Request) {
   try {
@@ -259,7 +266,7 @@ export async function PATCH(request: Request) {
         break;
 
       case 'update_task':
-        const taskIndex = focusSession.tasks.findIndex(t => t.id === data.taskId);
+        const taskIndex = focusSession.tasks.findIndex((t: Task) => t.id === data.taskId);
         if (taskIndex !== -1) {
           focusSession.tasks[taskIndex].completed = data.completed;
           if (data.completed) {

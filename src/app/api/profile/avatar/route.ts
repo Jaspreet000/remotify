@@ -15,8 +15,13 @@ export async function POST(request: Request) {
       );
     }
 
-    const token = authHeader.split(" ")[1];
-    const decoded = verifyToken(token) as { id: string };
+    const decoded = await verifyToken(request);
+    if (!decoded?.id) {
+      return NextResponse.json(
+        { success: false, message: "Invalid token" },
+        { status: 401 }
+      );
+    }
 
     const formData = await request.formData();
     const image = formData.get("image") as File;

@@ -29,25 +29,25 @@ export async function GET(request: Request) {
 
     // Filter out expired quests
     const now = new Date();
-    const activeQuests = (user.quests || []).filter(quest => {
-      const expiresAt = new Date(quest.expiresAt);
-      return expiresAt > now;
+    const activeQuests = (user.quests || []).filter((quest: Quest) => {
+      const endDate = new Date(quest.endDate);
+      return endDate > now;
     });
 
     // Generate new quests if needed
-    const dailyQuests = activeQuests.filter(q => q.type === 'daily');
-    const weeklyQuests = activeQuests.filter(q => q.type === 'weekly');
+    const dailyQuests = activeQuests.filter((q: Quest) => q.type === 'daily');
+    const weeklyQuests = activeQuests.filter((q: Quest) => q.type === 'weekly');
 
     let newQuests = [];
 
     // Check if we need new daily quests
     if (dailyQuests.length === 0) {
-      newQuests.push(...generateDailyQuests());
+      newQuests.push(...generateDailyQuests(user));
     }
 
     // Check if we need new weekly quests
     if (weeklyQuests.length === 0) {
-      newQuests.push(...generateWeeklyQuests());
+      newQuests.push(...generateWeeklyQuests(user));
     }
 
     if (newQuests.length > 0) {
@@ -218,7 +218,7 @@ export async function PATCH(request: Request) {
           user.achievements = [];
         }
         
-        if (!user.achievements.some(a => a.id === quest.rewards.achievement)) {
+        if (!user.achievements.some((a: { id: string }) => a.id === quest.rewards.achievement)) {
           user.achievements.push({
             id: quest.rewards.achievement,
             name: quest.name,

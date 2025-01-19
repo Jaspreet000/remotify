@@ -214,7 +214,7 @@ export async function PATCH(request: Request) {
     }
 
     // Check if user is team leader
-    const member = team.members.find(m => m.userId.equals(user._id));
+    const member = team.members.find((m: { userId: { equals: (id: any) => boolean }; role?: string }) => m.userId.equals(user._id));
     if (!member || member.role !== 'leader') {
       return NextResponse.json(
         { success: false, message: "Only team leaders can update team details" },
@@ -279,7 +279,7 @@ export async function DELETE(request: Request) {
     }
 
     // Check if user is team leader
-    const member = team.members.find(m => m.userId.equals(user._id));
+    const member = team.members.find((m: { userId: { equals: (id: any) => boolean }; role?: string }) => m.userId.equals(user._id));
     if (!member || member.role !== 'leader') {
       return NextResponse.json(
         { success: false, message: "Only team leaders can delete the team" },

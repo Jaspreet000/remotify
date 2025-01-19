@@ -31,10 +31,10 @@ export async function POST(request: Request) {
     // Get next 7 days of events
     const startDate = new Date();
     const endDate = new Date(startDate.getTime() + 7 * 24 * 60 * 60 * 1000);
-    const events = await listCalendarEvents(auth, startDate, endDate);
+    const calendarEvents = await listCalendarEvents(auth, startDate, endDate) ?? [];
 
     // Get AI suggestions for meeting times
-    const suggestions = await suggestMeetingSchedule(events, {
+    const suggestions = await suggestMeetingSchedule(calendarEvents, {
       duration,
       preferences,
       attendees

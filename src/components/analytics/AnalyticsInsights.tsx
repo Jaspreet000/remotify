@@ -39,10 +39,6 @@ export default function AnalyticsInsights() {
     "week" | "month" | "quarter"
   >("week");
 
-  useEffect(() => {
-    loadAnalytics();
-  }, [loadAnalytics]);
-
   const loadAnalytics = async () => {
     try {
       const response = await fetch(
@@ -57,6 +53,10 @@ export default function AnalyticsInsights() {
       toast.error("Failed to load analytics data");
     }
   };
+
+  useEffect(() => {
+    loadAnalytics();
+  }, [loadAnalytics]);
 
   if (!analyticsData) {
     return (

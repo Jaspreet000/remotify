@@ -39,6 +39,7 @@
     "typescript": "5.3.3"
   },
   "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
     "autoprefixer": "^10.4.20",
     "postcss": "^8.5.1",
     "tailwindcss": "^3.4.17",

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { dbConnect } from '@/lib/dbConnect';
-import { verifyToken } from '@/lib/auth';
+import { verifyJWT } from '@/lib/auth';
 import User from '@/models/User';
 import mongoose from 'mongoose';
 
@@ -46,7 +46,7 @@ export async function GET(request: Request) {
     }
 
     const token = authHeader.split(' ')[1];
-    const decoded = verifyToken(token) as DecodedToken;
+    const decoded = verifyJWT(token);
 
     const user = await User.findById(decoded.id) as {
       _id: mongoose.Types.ObjectId;
@@ -122,7 +122,7 @@ export async function PATCH(request: Request) {
     }
 
     const token = authHeader.split(' ')[1];
-    const decoded = verifyToken(token) as DecodedToken;
+    const decoded = verifyJWT(token);
     const updates = await request.json();
 
     const user = await User.findByIdAndUpdate(

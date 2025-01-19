@@ -1,4 +1,13 @@
-import { IUser } from '@/models/User';
+import { UserDocument as IUser } from '@/models/User';
+
+interface GamificationUser {
+  stats: {
+    totalFocusTime: number;
+    weeklyStreak: number;
+    averageSessionScore: number;
+  };
+  achievements: Achievement[];
+}
 
 export interface Achievement {
   id: string;
@@ -338,13 +347,10 @@ export function calculateRewards(
 
   // Apply power-up multipliers
   for (const powerUp of activePowerUps) {
-    if (powerUp.type === 'xp_boost') {
-      xp = Math.round(xp * powerUp.multiplier);
-    } else if (powerUp.type === 'coin_boost') {
-      coins = Math.round(coins * powerUp.multiplier);
-    } else if (powerUp.type === 'all_boost') {
-      xp = Math.round(xp * powerUp.multiplier);
-      coins = Math.round(coins * powerUp.multiplier);
+    if (powerUp.effect.type === 'xp') {
+      xp = Math.round(xp * powerUp.effect.multiplier);
+    } else if (powerUp.effect.type === 'coins') {
+      coins = Math.round(coins * powerUp.effect.multiplier);
     }
   }
 

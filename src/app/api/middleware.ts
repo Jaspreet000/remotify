@@ -9,7 +9,7 @@ export function middleware(request: Request) {
 
   const token = authHeader.split(' ')[1];
   try {
-    verifyToken(token);
+    verifyToken(token as unknown as Request);
   } catch {
     return NextResponse.redirect(new URL('/auth/login', request.url));
   }

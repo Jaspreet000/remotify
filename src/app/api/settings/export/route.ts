@@ -19,7 +19,13 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const format = searchParams.get('format');
     const token = authHeader.split(' ')[1];
-    const decoded = verifyToken(token) as { id: string };
+    const decoded = await verifyToken(request);
+    if (!decoded?.id) {
+      return NextResponse.json(
+        { success: false, message: 'Invalid token' },
+        { status: 401 }
+      );
+    }
 
     // Fetch user data and focus sessions
     const user = await User.findById(decoded.id).select('-password');
@@ -76,7 +82,7 @@ function generateCSV(data: any) {
   }));
 
   const headers = Object.keys(focusSessionRows[0]).join(',');
-  const rows = focusSessionRows.map(row => Object.values(row).join(',')).join('\n');
+  const rows = focusSessionRows.map((row: { [key: string]: string | number }) => Object.values(row).join(',')).join('\n');
 
   return `${headers}\n${rows}`;
 } 
