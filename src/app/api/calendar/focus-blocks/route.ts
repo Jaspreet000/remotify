@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import dbConnect from '@/lib/dbConnect';
 import User from '@/models/User';
-import { getGoogleAuthClient, blockFocusTime, findAvailableSlots } from '@/lib/calendarService';
+import { getGoogleAuthClient, blockFocusTime, findAvailableSlots, listCalendarEvents } from '@/lib/calendarService';
 import { optimizeFocusBlocks } from '@/lib/aiService';
 
 export async function POST(request: Request) {
