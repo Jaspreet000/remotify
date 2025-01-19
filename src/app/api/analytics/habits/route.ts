@@ -24,22 +24,27 @@ export async function GET(req: Request) {
     }
 
     const token = authHeader.split(' ')[1];
-    const decoded = verifyToken(token);
-    const userId = decoded.id;
+    const user = await verifyToken(req);
+    if (!user) {
+      return NextResponse.json(
+        { success: false, message: "Unauthorized" },
+        { status: 401 }
+      );
+    }
 
-    const user = await User.findById(userId)
+    const userData = await User.findById(user.id)
       .populate<{ workSessions: WorkSession[] }>('workSessions')
       .populate('habitAnalysis');
 
-    if (!user) {
+    if (!userData) {
       return NextResponse.json(
         { success: false, message: "User not found" },
         { status: 404 }
       );
     }
 
-    const recentSessions = user.workSessions.slice(-30);
-    const habitAnalysis = user.getRecentHabitAnalysis(7);
+    const recentSessions = userData.workSessions.slice(-30);
+    const habitAnalysis = userData.getRecentHabitAnalysis(7);
 
     const analysisData: ProductivityData = {
       sessions: recentSessions.map(session => ({
@@ -56,12 +61,12 @@ export async function GET(req: Request) {
       },
       preferences: {
         workHours: {
-          start: user.preferences.focus?.defaultDuration?.toString() || "09:00",
-          end: user.preferences.focus?.breakDuration?.toString() || "17:00"
+          start: userData.preferences.focus?.defaultDuration?.toString() || "09:00",
+          end: userData.preferences.focus?.breakDuration?.toString() || "17:00"
         },
         focusPreferences: {
-          duration: user.preferences.focus?.defaultDuration || 25,
-          breaks: user.preferences.focus?.breakDuration || 5
+          duration: userData.preferences.focus?.defaultDuration || 25,
+          breaks: userData.preferences.focus?.breakDuration || 5
         }
       }
     };

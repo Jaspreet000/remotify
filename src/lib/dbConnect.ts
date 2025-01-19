@@ -22,7 +22,7 @@ if (!cached) {
   cached = global.mongoose = { conn: null, promise: null };
 }
 
-async function dbConnect() {
+export async function dbConnect() {
   if (cached.conn) {
     return cached.conn;
   }
@@ -48,4 +48,4 @@ async function dbConnect() {
   return cached.conn;
 }
 
-export default dbConnect;
+export { dbConnect as default };
