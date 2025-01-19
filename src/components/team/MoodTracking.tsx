@@ -225,7 +225,7 @@ export default function MoodTracking() {
       {todayMood && (
         <div className="mb-8">
           <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
-            Today's Team Mood
+            Today&apos;s Team Mood
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">

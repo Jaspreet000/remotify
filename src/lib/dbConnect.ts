@@ -3,8 +3,8 @@ import mongoose from 'mongoose';
 
 declare global {
   var mongoose: {
-    conn: typeof mongoose | null;
-    promise: Promise<typeof mongoose> | null;
+    conn: any | null;
+    promise: Promise<any> | null;
   };
 }
 
@@ -33,7 +33,8 @@ async function dbConnect() {
     };
 
     cached.promise = mongoose.connect(MONGODB_URI, opts).then((mongoose) => {
-      return mongoose;
+      cached.conn = mongoose;
+      return cached;
     });
   }
 

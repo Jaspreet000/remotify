@@ -1,7 +1,8 @@
-'use client';
+"use client";
 
-import { motion } from 'framer-motion';
-import Link from 'next/link';
+import { motion } from "framer-motion";
+import Link from "next/link";
+import Image from "next/image";
 
 export default function AboutPage() {
   return (
@@ -22,8 +23,9 @@ export default function AboutPage() {
           transition={{ duration: 0.8, delay: 0.2 }}
           className="mt-4 text-lg text-gray-600"
         >
-          MyApp is a forward-thinking platform designed to help individuals and businesses streamline their daily tasks
-          with personalized tools, intuitive design, and innovative features.
+          MyApp is a forward-thinking platform designed to help individuals and
+          businesses streamline their daily tasks with personalized tools,
+          intuitive design, and innovative features.
         </motion.p>
       </section>
 
@@ -44,9 +46,11 @@ export default function AboutPage() {
             transition={{ duration: 0.8, delay: 0.2 }}
             className="mt-6 text-lg text-gray-600 text-center"
           >
-            At MyApp, our mission is to empower individuals and businesses with cutting-edge technology that simplifies
-            workflows, boosts productivity, and fosters creativity. We are committed to creating solutions that enhance
-            every user&apos;s experience and deliver tangible results.
+            At MyApp, our mission is to empower individuals and businesses with
+            cutting-edge technology that simplifies workflows, boosts
+            productivity, and fosters creativity. We are committed to creating
+            solutions that enhance every user&apos;s experience and deliver
+            tangible results.
           </motion.p>
         </div>
       </section>
@@ -68,27 +72,31 @@ export default function AboutPage() {
             transition={{ duration: 0.8, delay: 0.2 }}
             className="mt-4 text-lg text-gray-600"
           >
-            Our core values shape everything we do. We focus on innovation, integrity, and inclusivity in every
-            solution we offer. Together, we aim to create an environment where creativity and efficiency thrive.
+            Our core values shape everything we do. We focus on innovation,
+            integrity, and inclusivity in every solution we offer. Together, we
+            aim to create an environment where creativity and efficiency thrive.
           </motion.p>
 
           {/* Values Grid */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-12">
             {[
               {
-                title: 'Innovation',
-                description: 'Constantly seeking new ways to solve problems and improve experiences.',
-                icon: '🚀',
+                title: "Innovation",
+                description:
+                  "Constantly seeking new ways to solve problems and improve experiences.",
+                icon: "🚀",
               },
               {
-                title: 'Integrity',
-                description: 'Ensuring transparency and trust in all our interactions.',
-                icon: '🛡️',
+                title: "Integrity",
+                description:
+                  "Ensuring transparency and trust in all our interactions.",
+                icon: "🛡️",
               },
               {
-                title: 'Inclusivity',
-                description: 'Building solutions that serve everyone, regardless of background.',
-                icon: '🌍',
+                title: "Inclusivity",
+                description:
+                  "Building solutions that serve everyone, regardless of background.",
+                icon: "🌍",
               },
             ].map((value, index) => (
               <motion.div
@@ -99,7 +107,9 @@ export default function AboutPage() {
                 className="p-6 bg-white shadow-lg rounded-lg hover:shadow-xl transition"
               >
                 <div className="text-4xl mb-4">{value.icon}</div>
-                <h3 className="text-xl font-bold text-blue-700">{value.title}</h3>
+                <h3 className="text-xl font-bold text-blue-700">
+                  {value.title}
+                </h3>
                 <p className="mt-2 text-gray-600">{value.description}</p>
               </motion.div>
             ))}
@@ -124,16 +134,17 @@ export default function AboutPage() {
             transition={{ duration: 0.8, delay: 0.2 }}
             className="mt-4 text-lg text-gray-600 text-center"
           >
-            Our team is composed of experts from various fields, working together to bring innovation to life. Get to
-            know the passionate individuals behind MyApp.
+            Our team is composed of experts from various fields, working
+            together to bring innovation to life. Get to know the passionate
+            individuals behind MyApp.
           </motion.p>
 
           {/* Team Members */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-12">
             {[
-              { name: 'John Doe', role: 'CEO', img: '/john-doe.jpg' },
-              { name: 'Jane Smith', role: 'CTO', img: '/jane-smith.jpg' },
-              { name: 'Emma Brown', role: 'COO', img: '/emma-brown.jpg' },
+              { name: "John Doe", role: "CEO", img: "/john-doe.jpg" },
+              { name: "Jane Smith", role: "CTO", img: "/jane-smith.jpg" },
+              { name: "Emma Brown", role: "COO", img: "/emma-brown.jpg" },
             ].map((member, index) => (
               <motion.div
                 key={index}
@@ -142,12 +153,16 @@ export default function AboutPage() {
                 transition={{ duration: 0.6, delay: 0.3 * index }}
                 className="text-center"
               >
-                <img
+                <Image
                   src={member.img}
                   alt={member.name}
+                  width={128}
+                  height={128}
                   className="w-32 h-32 rounded-full mx-auto object-cover"
                 />
-                <h3 className="mt-4 text-xl font-semibold text-blue-700">{member.name}</h3>
+                <h3 className="mt-4 text-xl font-semibold text-blue-700">
+                  {member.name}
+                </h3>
                 <p className="text-lg text-gray-600">{member.role}</p>
               </motion.div>
             ))}
@@ -172,8 +187,8 @@ export default function AboutPage() {
             transition={{ duration: 0.8, delay: 0.2 }}
             className="mt-4 text-lg"
           >
-            Are you passionate about innovation, technology, and making a difference? Join us in shaping the future of
-            MyApp.
+            Are you passionate about innovation, technology, and making a
+            difference? Join us in shaping the future of MyApp.
           </motion.p>
           <Link href="/contact">
             <motion.a

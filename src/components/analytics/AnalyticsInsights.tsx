@@ -41,7 +41,7 @@ export default function AnalyticsInsights() {
 
   useEffect(() => {
     loadAnalytics();
-  }, [selectedTimeRange]);
+  }, [loadAnalytics]);
 
   const loadAnalytics = async () => {
     try {

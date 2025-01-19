@@ -145,7 +145,7 @@ export default function Stats({
             {/* Today's Progress */}
             <div>
               <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Today's Progress
+                Today&apos;s Progress
               </h4>
               <div className="p-3 rounded-lg border border-gray-200 dark:border-gray-700">
                 <div className="flex justify-between items-center mb-2">

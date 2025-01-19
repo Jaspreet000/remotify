@@ -18,6 +18,7 @@ import {
   Camera,
   Edit3,
 } from "lucide-react";
+import Image from "next/image";
 
 interface ProfileData {
   user: {
@@ -188,10 +189,12 @@ export default function Profile() {
         >
           <div className="flex flex-col md:flex-row items-start md:items-center gap-6">
             <div className="relative">
-              <img
+              <Image
                 src={user.profile.avatar || "/default-avatar.png"}
-                alt={user.name}
-                className="w-24 h-24 rounded-full object-cover"
+                alt={`${user.name}'s profile`}
+                width={128}
+                height={128}
+                className="w-32 h-32 rounded-full"
               />
               <label
                 className="absolute bottom-0 right-0 bg-blue-500 p-2 rounded-full cursor-pointer hover:bg-blue-600 transition-colors"

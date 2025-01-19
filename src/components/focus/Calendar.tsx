@@ -99,7 +99,7 @@ export default function Calendar() {
         {/* Today's Schedule */}
         <div>
           <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-            Today's Schedule
+            Today&apos;s Schedule
           </h4>
           <div className="space-y-2">
             {events

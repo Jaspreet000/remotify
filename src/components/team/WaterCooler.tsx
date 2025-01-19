@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { Users, MessageSquare, Plus, X } from "lucide-react";
 import { toast } from "react-toastify";
+import Image from "next/image";
 
 interface Participant {
   userId: {
@@ -313,19 +314,13 @@ export default function WaterCooler() {
           <div className="flex-1 overflow-y-auto mb-4 space-y-4">
             {activeRoom.messages.map((message, index) => (
               <div key={index} className="flex items-start space-x-3">
-                {message.userId.image ? (
-                  <img
-                    src={message.userId.image}
-                    alt={message.userId.name}
-                    className="w-8 h-8 rounded-full"
-                  />
-                ) : (
-                  <div className="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
-                    <span className="text-sm font-medium text-gray-600 dark:text-gray-300">
-                      {message.userId.name[0]}
-                    </span>
-                  </div>
-                )}
+                <Image
+                  src={message.userId.image}
+                  alt={`${message.userId.name}'s avatar`}
+                  width={40}
+                  height={40}
+                  className="w-10 h-10 rounded-full"
+                />
                 <div>
                   <div className="flex items-baseline space-x-2">
                     <span className="font-medium text-gray-900 dark:text-white">
@@ -372,19 +367,13 @@ export default function WaterCooler() {
                 key={participant.userId._id}
                 className="flex items-center space-x-3"
               >
-                {participant.userId.image ? (
-                  <img
-                    src={participant.userId.image}
-                    alt={participant.userId.name}
-                    className="w-8 h-8 rounded-full"
-                  />
-                ) : (
-                  <div className="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
-                    <span className="text-sm font-medium text-gray-600 dark:text-gray-300">
-                      {participant.userId.name[0]}
-                    </span>
-                  </div>
-                )}
+                <Image
+                  src={participant.userId.image}
+                  alt={`${participant.userId.name}'s avatar`}
+                  width={40}
+                  height={40}
+                  className="w-10 h-10 rounded-full"
+                />
                 <div>
                   <div className="font-medium text-gray-900 dark:text-white">
                     {participant.userId.name}
